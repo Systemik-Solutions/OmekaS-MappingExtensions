@@ -1,4 +1,5 @@
 <?php
+
 namespace Mapping\Site\BlockLayout;
 
 use Laminas\View\Renderer\PhpRenderer;
@@ -23,8 +24,11 @@ class MapQuery extends AbstractMap
         $block->setData($data);
     }
 
-    public function form(PhpRenderer $view, SiteRepresentation $site,
-        SitePageRepresentation $page = null, SitePageBlockRepresentation $block = null
+    public function form(
+        PhpRenderer $view,
+        SiteRepresentation $site,
+        SitePageRepresentation $page = null,
+        SitePageBlockRepresentation $block = null
     ) {
         $form = $this->formElementManager->get(BlockLayoutMapQueryForm::class);
         $data = $form->prepareBlockData($block ? $block->data() : []);
@@ -48,6 +52,18 @@ class MapQuery extends AbstractMap
             'data' => $data,
             'form' => $form,
         ]);
+
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/linked-items', [
+            'data' => $data,
+            'form' => $form,
+        ]);
+
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/group-by-color', [
+            'data' => $data,
+            'form' => $form,
+            'block' => $block
+        ]);
+
         return implode('', $formHtml);
     }
 
@@ -62,22 +78,37 @@ class MapQuery extends AbstractMap
         parse_str($data['query'], $itemsQuery);
         $featuresQuery = [];
 
-        // Get all events for the items.
+        // Get all events for the items/linked-item.
         $events = [];
         if ($isTimeline && $timelineIsAvailable) {
             $itemsQuery['site_id'] = $block->page()->site()->id();
             $itemsQuery['has_features'] = true;
             $itemsQuery['limit'] = 100000;
             $itemIds = $this->apiManager->search('items', $itemsQuery, ['returnScalar' => 'id'])->getContent();
+
+            $useLinked = !empty($data['map_linked_items']);
+            $linkedPropsTerms = $useLinked ? $this->normalizeLinkedPropsTerms($data['linked_properties'] ?? null) : null;
+
             foreach ($itemIds as $itemId) {
-                // Set the timeline event for this item.
-                $event = $this->getTimelineEvent($itemId, $data['timeline']['data_type_properties'], $view);
-                if ($event) {
-                    $events[] = $event;
+                if (!$useLinked) {
+                    // Original behavior: use the original item for timeline
+                    $event = $this->getTimelineEvent($itemId, $data['timeline']['data_type_properties'], $view);
+                    if ($event) $events[] = $event;
+                    continue;
+                }
+
+                // Linked-items timeline: resolve linked item IDs from this original item
+                $linkedIds = $this->collectLinkedItemIdsForTimeline($itemId, $linkedPropsTerms, (int)$itemsQuery['site_id']);
+
+                // Build events from linked items (deduped)
+                foreach (array_keys($linkedIds) as $lid) {
+                    $event = $this->getTimelineEvent($lid, $data['timeline']['data_type_properties'], $view, false);
+                    if ($event) {
+                        $events[] = $event;
+                    }
                 }
             }
         }
-
         return $view->partial('common/block-layout/mapping-block', [
             'data' => $data,
             'itemsQuery' => $itemsQuery,

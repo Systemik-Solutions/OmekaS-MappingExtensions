@@ -1,14 +1,65 @@
 <?php
+$displayItem = isset($item) && $item ? $item : $feature->item(); // prefer linked item if provided
 $label = $feature->label();
-$media = $feature->media();
-$item = $feature->item();
+
+// Prefer media from the display item; fall back to feature->media()
+$media = method_exists($displayItem, 'primaryMedia') ? $displayItem->primaryMedia() : null;
+if (!$media) {
+    $media = $feature->media();
+}
+
+$popupPropsTerms = $popupPropsTerms ?? [];
+$allValuesByTerm =  (array) $displayItem->values();
 ?>
 <span class="group-type">
-<?php echo ($label) ? $this->escapeHtml($label) : $this->translate('Item'); ?>
+    <?php echo $label ? $this->escapeHtml($label) : $this->translate('Item'); ?>
 </span>
 
-<span class="group-value"><?php echo $item->link($item->displayTitle(null, $this->lang()), null, ['target' => '_blank']); ?></span>
+<span class="group-value">
+    <?php echo $displayItem->link($displayItem->displayTitle(null, $this->lang()), null, ['target' => '_blank']); ?>
+</span>
+
+
+<?php if (!empty($popupPropsTerms)) : ?>
+    <dl class="mapping-popup-props">
+        <?php foreach ($popupPropsTerms as $term): ?>
+            <?php
+            $propertyData = $allValuesByTerm[$term] ?? null;
+
+            $propertyValues = $propertyData['values'] ?? [];
+            if (!$propertyValues) continue;
+
+            $propRep = $propertyData['property'] ?? null;
+
+            // Prefer alternate_label (from ResourceTemplateProperty), else property label, else term
+            $labelText = $term;
+            if (!empty($propertyData['alternate_label'])) {
+                $labelText = $propertyData['alternate_label'];
+            } elseif ($propRep && method_exists($propRep, 'label')) {
+                $labelText = $propRep->label();
+            }
+            ?>
+            <dt><?= $this->escapeHtml($labelText); ?></dt>
+            <?php foreach ($propertyValues as $v): ?>
+                <dd>
+                    <?= method_exists($v, 'asHtml') ? $v->asHtml() : $this->escapeHtml((string) $v); ?>
+                </dd>
+            <?php endforeach; ?>
+        <?php endforeach; ?>
+    </dl>
+<?php endif; ?>
+
+
+
+<?php if ( !$isJourneyMap && !empty($originalItem) && $originalItem instanceof \Omeka\Api\Representation\ItemRepresentation && $originalItem->id() !== $displayItem->id()): ?>
+    <div class="mapping-linked-from">
+        <small>
+            <?php echo $this->translate('Linked from:'); ?>
+            <?php echo $originalItem->link($originalItem->displayTitle(null, $this->lang()), null, ['target' => '_blank']); ?>
+        </small>
+    </div>
+<?php endif; ?>
 
 <?php if ($media): ?>
-<?php echo $this->thumbnail($media, 'medium'); ?>
+    <?php echo $this->thumbnail($media, 'medium'); ?>
 <?php endif; ?>

@@ -1,9 +1,10 @@
 <?php
+
 namespace Mapping\Form;
 
 use Laminas\Form\Form;
 
-class BlockLayoutMapQueryForm extends Form
+class BlockLayoutMapJourneyForm extends Form
 {
     public function init()
     {
@@ -16,12 +17,12 @@ class BlockLayoutMapQueryForm extends Form
             'name' => 'overlays',
         ]);
         $this->add([
-            'type' => Fieldset\TimelineFieldset::class,
-            'name' => 'timeline',
-        ]);
-        $this->add([
             'type' => Fieldset\QueryFieldset::class,
             'name' => 'query',
+        ]);
+        $this->add([
+            'type' => Fieldset\SinglePropertySelectFieldset::class,
+            'name' => 'journey',
         ]);
         $this->add([
             'type' => Fieldset\GroupByFieldset::class,
@@ -38,26 +39,13 @@ class BlockLayoutMapQueryForm extends Form
         $data = array_merge(
             $this->get('default_view')->filterBlockData($rawData),
             $this->get('overlays')->filterBlockData($rawData),
-            $this->get('timeline')->filterBlockData($rawData),
             $this->get('query')->filterBlockData($rawData),
+            $this->get('journey')->filterBlockData($rawData),
             $this->get('group_by_control')->filterBlockData($rawData),
             $this->get('node_colors')->filterBlockData($rawData)
         );
 
-        $data = array_merge($data, [
-            'map_linked_items'         => !empty($rawData['map_linked_items']) ? '1' : '0',
-            'linked_properties' => is_array($rawData['linked_properties'] ?? null)
-                ? array_values($rawData['linked_properties'])
-                : (strlen(trim((string)($rawData['linked_properties'] ?? ''))) > 0
-                    ? array_map('trim', explode(',', $rawData['linked_properties']))
-                    : []),
-
-            'popup_display_properties' => is_array($rawData['popup_display_properties'] ?? null)
-                ? array_values($rawData['popup_display_properties'])
-                : (strlen(trim((string)($rawData['popup_display_properties'] ?? ''))) > 0
-                    ? array_map('trim', explode(',', $rawData['popup_display_properties']))
-                    : []),
-        ]);
+        error_log(json_encode($rawData, true));
 
         $this->setData([
             'default_view' => [
@@ -69,16 +57,11 @@ class BlockLayoutMapQueryForm extends Form
             'overlays' => [
                 'o:block[__blockIndex__][o:data][overlay_mode]' => $data['overlay_mode'],
             ],
-            'timeline' => [
-                'o:block[__blockIndex__][o:data][timeline][title_headline]' => $data['timeline']['title_headline'],
-                'o:block[__blockIndex__][o:data][timeline][title_text]' => $data['timeline']['title_text'],
-                'o:block[__blockIndex__][o:data][timeline][fly_to]' => $data['timeline']['fly_to'],
-                'o:block[__blockIndex__][o:data][timeline][show_contemporaneous]' => $data['timeline']['show_contemporaneous'],
-                'o:block[__blockIndex__][o:data][timeline][timenav_position]' => $data['timeline']['timenav_position'],
-                'o:block[__blockIndex__][o:data][timeline][data_type_properties]' => $data['timeline']['data_type_properties'][0] ?? '',
-            ],
             'query' => [
                 'o:block[__blockIndex__][o:data][query]' => $data['query'],
+            ],
+            'journey' => [
+                'property' => $data['journey']['property']
             ],
             'group_by_control' => [
                 'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',

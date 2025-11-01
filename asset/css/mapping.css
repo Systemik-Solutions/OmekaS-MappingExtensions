@@ -93,3 +93,28 @@
   overflow-y: auto;
   max-height: 200px;
 }
+
+.cluster-popup h4{
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.leaflet-popup-content .cluster-popup .cluster-list {
+  max-height: 200px;     
+  overflow-y: auto;
+  padding-right: .25rem; 
+}
+
+
+.leaflet-popup-content .cluster-popup table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+
+.leaflet-popup-content .cluster-popup .cluster-row:hover .cluster-val a {
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -1,0 +1,169 @@
+<?php
+
+/** @var \Laminas\View\Renderer\PhpRenderer $this */
+/** @var \Laminas\Form\Form $form */
+
+use Laminas\Form\Factory as FormFactory;
+
+// 1) Get the two fieldsets that were registered in the Form::init()
+$services = $this->getHelperPluginManager()->getServiceLocator();
+$formElementManager = $services->get('FormElementManager');
+$factory = new FormFactory($formElementManager);
+
+// IMPORTANT: rename them to Omeka's namespaced keys BEFORE prepare()
+$groupFs  = $form->get('group_by_control');
+$groupFs->setName('o:block[__blockIndex__][o:data][group_by_control]');
+
+$colorsFs = $form->get('node_colors');
+$colorsFs->setName('o:block[__blockIndex__][o:data][node_colors]');
+
+
+$rows = $colorsFs->get('rows');
+$rows->setFormFactory($factory);
+$rows->setTargetElement($formElementManager->get(\Mapping\Form\Fieldset\NodeColorPairFieldset::class));
+
+$form->prepare();
+?>
+
+<a href="#" class="collapse">
+    <h4><?= $this->translate('Group Colors'); ?></h4>
+</a>
+<div class="collapsible group-by-color-settings">
+    <div class="group-by-fields" style="margin-bottom: 20px;">
+        <?= $this->formCollection($form->get('group_by_control'), false); ?>
+    </div>
+
+    <div class="color-fields">
+        <?= $this->formCollection($form->get('node_colors'), false); ?>
+    </div>
+    <button type="button" class="button mp-add-color" style="margin-top:.5rem;">+ <?= $this->escapeHtml($this->translate('Add color')) ?></button>
+</div>
+
+<script>
+    (function($) {
+        function currentGroupMode($scope) {
+            return $scope.find('select.mp_group_by_select').first().val() || 'resource_class';
+        }
+
+        function applyVisibilityForGroup($scope) {
+            const mode = currentGroupMode($scope); // 'resource_class' | 'resource_template'
+            $scope.find('select.mp--rc').each(function() {
+                $(this).closest('.field').toggle(mode === 'resource_class');
+            });
+            $scope.find('select.mp--rt').each(function() {
+                $(this).closest('.field').toggle(mode === 'resource_template');
+            });
+        }
+
+        function nextRowIndex($scope) {
+            let maxIdx = -1;
+            $scope.find('[name*="[node_colors][rows]"]').each(function() {
+                const name = this.name || '';
+                const m = name.match(/\[node_colors]\[rows]\[(\d+)]\[/);
+                if (m) {
+                    const idx = parseInt(m[1], 10);
+                    if (!isNaN(idx) && idx > maxIdx) maxIdx = idx;
+                }
+            });
+            return maxIdx + 1;
+        }
+
+        function getBlockIndex($scope) {
+            const anyName = $scope.find('[name^="o:block["]').first().attr('name') || '';
+            const m = anyName.match(/^o:block\[(\d+)]/);
+            return m ? m[1] : '0';
+        }
+
+        function addRow($scope) {
+            const $btn = $scope.find('.mp-add-color').first();
+
+            let $tmpl = $btn.prevAll('span[data-template]').first();
+            if (!$tmpl.length) {
+                $tmpl = $scope.find('span[data-template]').last();
+            }
+            if (!$tmpl.length) {
+                console.warn('Mapping: node_colors template not found in this block.', $scope.get(0));
+                return;
+            }
+
+            const idx = nextRowIndex($scope);
+            const blockIndex = getBlockIndex($scope);
+            const raw = $tmpl.attr('data-template') || '';
+
+            // ensure template stays as the last child within its container
+            const $container = $tmpl.parent();
+            if ($tmpl.next().length) $container.append($tmpl.detach());
+
+            // IMPORTANT: replace BOTH placeholders
+            const html = raw
+                .replace(/__blockIndex__/g, String(blockIndex))
+                .replace(/__index__/g, String(idx));
+
+            $(html).insertBefore($tmpl);
+
+            applyVisibilityForGroup($scope);
+        }
+
+        function removeRow($btn) {
+            const name = $btn.attr('name') || '';
+            const m = name.match(/\[node_colors]\[rows]\[(\d+)]\[remove]/);
+            if (!m) return;
+            const idx = m[1];
+
+            const regex = new RegExp('\\[node_colors]\\[rows]\\[' + idx + ']\\[');
+            const $scope = $btn.closest('.group-by-color-settings');
+            $scope.find('.field').filter(function() {
+                const $f = $(this);
+                const hit = $f.find('[name]').toArray().some(function(el) {
+                    return regex.test(el.name || '');
+                });
+                return hit;
+            }).remove();
+        }
+
+        // Wire one block container
+        function wireOne(scopeEl) {
+            const $scope = $(scopeEl);
+            if (!$scope.length) return;
+
+            // Avoid duplicate bindings on same scope
+            if ($scope.data('mp-wired')) return;
+            $scope.data('mp-wired', true);
+
+            // Initial visibility
+            applyVisibilityForGroup($scope);
+
+            // Change group mode
+            $scope.on('change.mpGroup', '.mp_group_by_select', function() {
+                applyVisibilityForGroup($scope);
+            });
+
+            // Add color
+            $scope.on('click.mpAdd', '.mp-add-color', function(e) {
+                e.preventDefault();
+                addRow($scope);
+            });
+
+            // Remove color
+            $scope.on('click.mpRemove', '.mp-remove', function(e) {
+                e.preventDefault();
+                removeRow($(this));
+            });
+        }
+
+        // Wire all existing blocks on load
+        $(function() {
+            $('.group-by-color-settings').each(function() {
+                wireOne(this);
+            });
+        });
+
+        // Wire blocks added later (page editor events)
+        $(document).on('o:block-added o:form-loaded o:collection-add', function(e, ctx) {
+            const $ctx = ctx ? $(ctx) : $(document);
+            $ctx.find('.group-by-color-settings').each(function() {
+                wireOne(this);
+            });
+        });
+    })(jQuery);
+</script>

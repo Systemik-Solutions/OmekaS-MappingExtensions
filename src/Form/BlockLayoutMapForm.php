@@ -19,6 +19,14 @@ class BlockLayoutMapForm extends Form
             'type' => Fieldset\TimelineFieldset::class,
             'name' => 'timeline',
         ]);
+        $this->add([
+            'type' => Fieldset\GroupByFieldset::class,
+            'name' => 'group_by_control'
+        ]);
+        $this->add([
+            'type' => Fieldset\NodeColorsFieldset::class,
+            'name' => 'node_colors'
+        ]);
     }
 
     public function prepareBlockData(array $rawData)
@@ -27,7 +35,25 @@ class BlockLayoutMapForm extends Form
             $this->get('default_view')->filterBlockData($rawData),
             $this->get('overlays')->filterBlockData($rawData),
             $this->get('timeline')->filterBlockData($rawData),
+            $this->get('group_by_control')->filterBlockData($rawData),
+            $this->get('node_colors')->filterBlockData($rawData)
         );
+        
+        $data = array_merge($data, [
+            'map_linked_items'         => !empty($rawData['map_linked_items']) ? '1' : '0',
+            'linked_properties' => is_array($rawData['linked_properties'] ?? null)
+                ? array_values($rawData['linked_properties'])
+                : (strlen(trim((string)($rawData['linked_properties'] ?? ''))) > 0
+                    ? array_map('trim', explode(',', $rawData['linked_properties']))
+                    : []),
+
+            'popup_display_properties' => is_array($rawData['popup_display_properties'] ?? null)
+                ? array_values($rawData['popup_display_properties'])
+                : (strlen(trim((string)($rawData['popup_display_properties'] ?? ''))) > 0
+                    ? array_map('trim', explode(',', $rawData['popup_display_properties']))
+                    : []),
+        ]);
+
         $this->setData([
             'default_view' => [
                 'o:block[__blockIndex__][o:data][basemap_provider]' => $data['basemap_provider'],
@@ -45,6 +71,12 @@ class BlockLayoutMapForm extends Form
                 'o:block[__blockIndex__][o:data][timeline][show_contemporaneous]' => $data['timeline']['show_contemporaneous'],
                 'o:block[__blockIndex__][o:data][timeline][timenav_position]' => $data['timeline']['timenav_position'],
                 'o:block[__blockIndex__][o:data][timeline][data_type_properties]' => $data['timeline']['data_type_properties'][0] ?? '',
+            ],
+            'group_by_control' => [
+                'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',
+            ],
+            'node_colors' => [
+                'rows' => $data['node_colors']['rows'] ?? [],
             ],
         ]);
         return $data;

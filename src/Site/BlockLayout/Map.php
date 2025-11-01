@@ -1,4 +1,5 @@
 <?php
+
 namespace Mapping\Site\BlockLayout;
 
 use Laminas\View\Renderer\PhpRenderer;
@@ -44,8 +45,11 @@ class Map extends AbstractMap
         }
     }
 
-    public function form(PhpRenderer $view, SiteRepresentation $site,
-        SitePageRepresentation $page = null, SitePageBlockRepresentation $block = null
+    public function form(
+        PhpRenderer $view,
+        SiteRepresentation $site,
+        SitePageRepresentation $page = null,
+        SitePageBlockRepresentation $block = null
     ) {
         $form = $this->formElementManager->get(BlockLayoutMapForm::class);
         $data = $form->prepareBlockData($block ? $block->data() : []);
@@ -66,6 +70,19 @@ class Map extends AbstractMap
             ]);
         }
         $formHtml[] = $view->blockAttachmentsForm($block, true, ['has_features' => true]);
+
+
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/linked-items', [
+            'data' => $data,
+            'form' => $form,
+        ]);
+
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/group-by-color', [
+            'data' => $data,
+            'form' => $form,
+            'block' => $block
+        ]);
+
         return implode('', $formHtml);
     }
 
@@ -89,14 +106,35 @@ class Map extends AbstractMap
         $itemsQuery = ['id' => $itemIds ? implode(',', $itemIds) : 0];
         $featuresQuery = [];
 
-        // Get all events for the items.
+        // Get all events for the items/linked-item.
         $events = [];
         if ($isTimeline && $timelineIsAvailable) {
+
+            $services = $view->getHelperPluginManager()->getServiceLocator();
+            $this->setApiManager($services->get('Omeka\ApiManager'));
+
+            $useLinked = !empty($data['map_linked_items']);
+            $linkedPropsTerms = $useLinked ? $this->normalizeLinkedPropsTerms($data['linked_properties'] ?? null) : null;
+
             foreach ($itemIds as $itemId) {
-                // Set the timeline event for this item.
-                $event = $this->getTimelineEvent($itemId, $data['timeline']['data_type_properties'], $view);
-                if ($event) {
-                    $events[] = $event;
+                if (!$useLinked) {
+                    // Original behavior: use the original item for timeline
+                    $event = $this->getTimelineEvent($itemId, $data['timeline']['data_type_properties'], $view);
+                    if ($event) {
+                        $events[] = $event;
+                    }
+                    continue;
+                }
+
+                // Linked-items timeline: resolve linked item IDs from this original item
+                $linkedIds = $this->collectLinkedItemIdsForTimeline($itemId, $linkedPropsTerms, (int) $block->page()->site()->id());
+
+                // Build events from linked items (deduped)
+                foreach (array_keys($linkedIds) as $lid) {
+                    $event = $this->getTimelineEvent($lid, $data['timeline']['data_type_properties'], $view, false);
+                    if ($event) {
+                        $events[] = $event;
+                    }
                 }
             }
         }

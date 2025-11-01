@@ -1,4 +1,5 @@
 <?php
+
 namespace Mapping\Site\BlockLayout;
 
 use Composer\Semver\Comparator;
@@ -9,6 +10,7 @@ use NumericDataTypes\DataType\Timestamp;
 use Omeka\Api\Exception\NotFoundException;
 use Omeka\Module\Manager as ModuleManager;
 use Omeka\Site\BlockLayout\AbstractBlockLayout;
+use WeakReference;
 
 abstract class AbstractMap extends AbstractBlockLayout
 {
@@ -126,11 +128,11 @@ abstract class AbstractMap extends AbstractBlockLayout
      * @param array $dataTypeProperties
      * @return array
      */
-    public function getTimelineEvent($itemId, array $dataTypeProperties, $view)
+    public function getTimelineEvent($itemId, array $dataTypeProperties, $view, $has_features = true)
     {
         $query = [
             'id' => $itemId,
-            'has_features' => true,
+            'has_features' => $has_features,
         ];
         $item = $view->api()->searchOne('items', $query)->getContent();
         if (!$item) {
@@ -240,5 +242,144 @@ abstract class AbstractMap extends AbstractBlockLayout
     public function setApiManager($apiManager)
     {
         $this->apiManager = $apiManager;
+    }
+
+    /**
+     * Normalize linked_properties input (null | csv string | json string | array) to array of terms or null (meaning "any").
+     */
+    public function normalizeLinkedPropsTerms($raw)
+    {
+        if ($raw === null || $raw === '' || $raw === []) return null; // null => any property
+        if (is_array($raw)) {
+            $list = $raw;
+        } elseif (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) $list = $decoded;
+            else $list = array_values(array_filter(array_map('trim', explode(',', $raw))));
+        } else {
+            return null;
+        }
+        $list = array_values(array_unique(array_filter(array_map('strval', $list))));
+        return $list ?: null;
+    }
+
+
+    /**
+     * Resolve property ID from term 
+     */
+    public function getPropertyIdForTerm($term)
+    {
+        try {
+            $prop = $this->api()->search('properties', ['term' => $term])->getContent();
+            return $prop[0] ? (int)$prop[0]->id() : null;
+        } catch (\Throwable $e) {
+            error_log("Error retrieving property for term $term: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Collect linked item IDs for timeline purposes (both outgoing & incoming).
+     * - If $linkedPropsTerms is null => any property
+     * - Else only the listed properties.
+     */
+    public function collectLinkedItemIdsForTimeline(int $originalItemId, ?array $linkedPropsTerms, int $siteId): array
+    {
+        $linked = [];
+
+        // 1) Outgoing links: original -> linked
+        try {
+            /** @var \Omeka\Api\Representation\ItemRepresentation $orig */
+            $orig = $this->apiManager->read('items', $originalItemId)->getContent();
+            foreach ($orig->values() as $term => $propData) {
+                if (is_array($linkedPropsTerms) && !in_array($term, $linkedPropsTerms, true)) {
+                    continue;
+                }
+
+                // normalize values
+                $values = [];
+                if (is_array($propData) && array_key_exists('values', $propData)) {
+                    $values = is_array($propData['values']) ? $propData['values'] : [];
+                } elseif (is_array($propData) && isset($propData[0]) && $propData[0] instanceof \Omeka\Api\Representation\ValueRepresentation) {
+                    $values = $propData;
+                }
+
+                foreach ($values as $v) {
+                    if (!$v instanceof \Omeka\Api\Representation\ValueRepresentation) continue;
+                    $type = $v->type();
+                    if ($type === 'resource' || $type === 'resource:item') {
+                        $vr = $v->valueResource();
+                        if ($vr instanceof \Omeka\Api\Representation\ItemRepresentation) {
+                            $linked[(int)$vr->id()] = true;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        // 2) Incoming links: linked -> original
+        try {
+            if (is_array($linkedPropsTerms) && $linkedPropsTerms) {
+                // specific properties
+                foreach ($linkedPropsTerms as $term) {
+                    $pid = $this->getPropertyIdForTerm($term);
+                    if (!$pid) {
+                        error_log("Error, Property id for term $term not found");
+                        continue;
+                    }
+
+                    try {
+                        $inv = $this->apiManager->search('items', [
+                            'site_id'  => $siteId,
+                            'limit'    => 1000,
+                            'property' => [[
+                                'joiner'   => 'and',
+                                'property' => $pid,
+                                'type'     => 'res',
+                                'text'     => (string)$originalItemId,
+                            ]],
+                            'is_public' => 1,
+                        ], ['returnScalar' => 'id'])->getContent();
+                    } catch (\Throwable $e) {
+                        error_log("Error searching incoming links for property $term (id $pid): " . $e->getMessage());
+                    }
+
+                    foreach ($inv as $lid) $linked[(int)$lid] = true;
+                }
+            } else {
+                // any property (Omeka uses 0 for "any")
+                try {
+                    $invAny = $this->apiManager->search('items', [
+                        'site_id'  => $siteId,
+                        'limit'    => 1000,
+                        'property' => [[
+                            'joiner'   => 'and',
+                            'property' => '',
+                            'type'     => 'res',
+                            'text'     => $originalItemId,
+                        ]],
+                        'is_public' => 1,
+                    ], ['returnScalar' => 'id'])->getContent();
+                } catch (\Throwable $e) {
+                    $invAny = [];
+                }
+
+                foreach ($invAny as $lid) $linked[(int)$lid] = true;
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        return $linked;
+    }
+
+    private function api()
+    {
+        if (!$this->apiManager) {
+            $sm = $this->formElementManager->getServiceLocator();
+            $this->apiManager = $sm->get('Omeka\ApiManager');
+        }
+        return $this->apiManager;
     }
 }

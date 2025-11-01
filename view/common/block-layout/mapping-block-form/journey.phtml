@@ -1,0 +1,12 @@
+<?php
+// journey.phtml
+$form->get('journey')->setName('o:block[__blockIndex__][o:data][journey]');
+$form->get('journey')->get('property')->setValue($data['journey']['property'] ?? '');
+$form->prepare();
+?>
+<a href="#" class="collapse">
+    <h4><?= $this->translate('Journey field'); ?></h4>
+</a>
+<div class="collapsible">
+    <?= $this->formCollection($form->get('journey'), false); ?>
+</div>

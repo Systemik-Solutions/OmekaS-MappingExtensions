@@ -74,6 +74,7 @@ return [
             'mappingMap' => Service\BlockLayout\MapFactory::class,
             'mappingMapQuery' => Service\BlockLayout\MapFactory::class,
             'mappingMapGroups' => Service\BlockLayout\MapFactory::class,
+            'mappingMapJourney'  => Service\BlockLayout\MapFactory::class,
         ],
     ],
     'navigation_links' => [

@@ -5,6 +5,7 @@ use Interop\Container\ContainerInterface;
 use Mapping\Site\BlockLayout\Map;
 use Mapping\Site\BlockLayout\MapGroups;
 use Mapping\Site\BlockLayout\MapQuery;
+use Mapping\Site\BlockLayout\MapJourney;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 
 class MapFactory implements FactoryInterface
@@ -25,6 +26,11 @@ class MapFactory implements FactoryInterface
                 break;
             case 'mappingMap':
                 $blockLayout = new Map;
+                $blockLayout->setModuleManager($services->get('Omeka\ModuleManager'));
+                $blockLayout->setFormElementManager($services->get('FormElementManager'));
+                break;
+            case 'mappingMapJourney':
+                $blockLayout = new MapJourney;
                 $blockLayout->setModuleManager($services->get('Omeka\ModuleManager'));
                 $blockLayout->setFormElementManager($services->get('FormElementManager'));
                 break;

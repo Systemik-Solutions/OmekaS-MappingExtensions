@@ -1,0 +1,105 @@
+<?php
+
+/** @var \Laminas\View\Renderer\PhpRenderer $this */
+/** @var array $data */
+/** @var \Laminas\Form\Form $form */
+
+$services = $this->getHelperPluginManager()->getServiceLocator();
+$formElementManager = $services->get('FormElementManager');
+$view = $this;
+
+// 1) Checkbox — "Map linked items instead" (unchecked by default)
+$mapLinkedItems = new \Laminas\Form\Element\Checkbox('o:block[__blockIndex__][o:data][map_linked_items]');
+$mapLinkedItems->setOptions([
+    'label'              => $view->translate('Map linked items instead'),
+    'use_hidden_element' => true,
+    'checked_value'      => '1',
+    'unchecked_value'    => '0',
+]);
+$mapLinkedItems->setValue(!empty($data['map_linked_items']) ? '1' : '0');
+$form->add($mapLinkedItems);
+
+
+// 2) Dropdown — "Property" (multiple PropertySelect)
+$linkedProps = $formElementManager->get(\Omeka\Form\Element\PropertySelect::class);
+$linkedProps->setName('o:block[__blockIndex__][o:data][linked_properties]');
+$linkedProps->setOptions([
+    'label'              => $view->translate('Property'),
+    'empty_option'       => '',
+    'term_as_value'      => true,
+    'use_hidden_element' => true,
+]);
+$linkedProps->setAttributes([
+    'multiple'         => true,
+    'class'            => 'chosen-select linked-prop-select',
+    'data-placeholder' => $view->translate('Select one or more properties…'),
+    'value'            => $data['linked_properties'] ?? [],
+]);
+$linkedProps->setValue($data['linked_properties'] ?? []);
+$form->add($linkedProps);
+
+// 3) Dropdown — "Display properties in Popup" (multiple PropertySelect)
+$popupProps = $formElementManager->get(\Omeka\Form\Element\PropertySelect::class);
+$popupProps->setName('o:block[__blockIndex__][o:data][popup_display_properties]');
+$popupProps->setOptions([
+    'label'              => $view->translate('Display properties in Popup'),
+    'empty_option'       => '',
+    'term_as_value'      => true,
+    'use_hidden_element' => true,
+]);
+$popupProps->setAttributes([
+    'multiple'         => true,
+    'class'            => 'chosen-select popup-prop-select',
+    'data-placeholder' => $view->translate('Select one or more properties…'),
+    'value'            => $data['popup_display_properties'] ?? [],
+]);
+$popupProps->setValue($data['popup_display_properties'] ?? []);
+$form->add($popupProps);
+
+?>
+
+
+<div class="field">
+    <div class="inputs">
+        <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][map_linked_items]')); ?>
+        <?= $this->formRow($linkedProps); ?>
+        <?= $this->formRow($popupProps); ?>
+    </div>
+</div>
+
+
+<script>
+    (function($) {
+        function initRelProps(scope) {
+            $(scope).find('select.linked-prop-select, select.popup-prop-select').each(function() {
+                const $s = $(this);
+                if ($s.data('ngChosenInit')) return;
+
+                if ($.fn.chosen) {
+                    try {
+                        $s.chosen({
+                            width: '100%',
+                            include_group_label_in_selected: true,
+                            placeholder_text_multiple: $s.data('placeholder') || 'Select one or more properties…',
+                        });
+                        $s.data('ngChosenInit', 1);
+                    } catch (e) {
+                        console.error('MappingPlus: Chosen init failed', e);
+                    }
+                }
+            });
+        }
+
+        $(function() {
+            initRelProps(document);
+        });
+
+        $(document)
+            .on('o:form-loaded o:block-added o:form-updated', function(_e, ctx) {
+                initRelProps(ctx || document);
+            })
+            .on('o:collection-add', function(_e, ctx) {
+                initRelProps(ctx || document);
+            });
+    })(jQuery);
+</script>

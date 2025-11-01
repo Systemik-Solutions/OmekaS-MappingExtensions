@@ -16,6 +16,7 @@ function MappingBlock(mapDiv, timelineDiv) {
         basemapProvider = mapDiv.data('basemap-provider');
     }
 
+    const isJourneyMap = !!(mapData && mapData.journey );
     const [
         map,
         features,
@@ -30,7 +31,7 @@ function MappingBlock(mapDiv, timelineDiv) {
         basemapProvider: basemapProvider,
         excludeLayersControl: true,
         excludeFitBoundsControl: (timelineDiv && timelineDiv.length),
-    });
+    } , isJourneyMap);
 
     // For easy reference, assign the Leaflet map object directly to the map element.
     mapDiv[0].mapping_map = map;
@@ -219,6 +220,7 @@ function MappingBlock(mapDiv, timelineDiv) {
         });
     });
 
+    // Whether can add search input at top, (display properteies in )
     // Load features asynchronously.
     if (getFeaturesUrl) {
         const onFeaturesLoad = function() {
@@ -238,7 +240,9 @@ function MappingBlock(mapDiv, timelineDiv) {
             JSON.stringify(mapDiv.data('itemsQuery')),
             JSON.stringify(mapDiv.data('featuresQuery')),
             onFeaturesLoad,
-            featuresByResource
+            featuresByResource,
+            1,
+            JSON.stringify(mapData), // <-- NEW: pass full block data
         );
     }
 
