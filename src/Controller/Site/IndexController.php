@@ -75,15 +75,20 @@ class IndexController extends AbstractActionController
         foreach ($featureResponse->getContent() as $feature) {
             $displayItem = $feature->item();
             $color       = $this->getItemColor($displayItem, $groupMode, $colorRows);
-            
-            $geography = $feature->geography();
-            $featureArray = [
-                'type'       => 'Point',
-                'coordinates' => [$geography->getLongitude(), $geography->getLatitude()],
-                'properties' => [
-                    'title' => $displayItem->displayTitle(),
-                ]
-            ];
+            $geo = $feature->geography();
+
+            if ($geo->getType() == 'Point' && method_exists($geo, 'getLongitude') && method_exists($geo, 'getLatitude')) {
+                $featureArray = [
+                    'type'        => 'Point',
+                    'coordinates' => [$geo->getLongitude(), $geo->getLatitude()],
+                    'srid'        => method_exists($geo, 'getSrid') ? $geo->getSrid() : null,
+                    'properties'  => [
+                        'title' => $displayItem->displayTitle(),
+                    ],
+                ];
+            } else {
+                $featureArray = $geo;
+            }
 
             $features[] = [
                 $feature->id(),
@@ -274,14 +279,20 @@ class IndexController extends AbstractActionController
                 $displayItem = $this->getItemById($linkedId, $api, $itemCache);
                 $color       = $this->getItemColor($displayItem, $groupMode, $colorRows);
 
-                $geography = $feature->geography();
-                $featureArray = [
-                    'type'       => 'Point',
-                    'coordinates' => [$geography->getLongitude(), $geography->getLatitude()],
-                    'properties' => [
-                        'title' => $displayItem->displayTitle(),
-                    ]
-                ];
+                $geo = $feature->geography();
+
+                if ($geo->getType() == 'Point' && method_exists($geo, 'getLongitude') && method_exists($geo, 'getLatitude')) {
+                    $featureArray = [
+                        'type'        => 'Point',
+                        'coordinates' => [$geo->getLongitude(), $geo->getLatitude()],
+                        'srid'        => method_exists($geo, 'getSrid') ? $geo->getSrid() : null,
+                        'properties'  => [
+                            'title' => $displayItem->displayTitle(),
+                        ],
+                    ];
+                } else {
+                    $featureArray = $geo;
+                }
 
                 $features[] = [
                     $feature->id(),

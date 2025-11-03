@@ -45,8 +45,6 @@ class BlockLayoutMapJourneyForm extends Form
             $this->get('node_colors')->filterBlockData($rawData)
         );
 
-        error_log(json_encode($rawData, true));
-
         $this->setData([
             'default_view' => [
                 'o:block[__blockIndex__][o:data][basemap_provider]' => $data['basemap_provider'],
