@@ -303,20 +303,43 @@ const MappingModule = {
     addFeature: function(map, featuresPoint, featuresPoly, layer, type) {
         switch (type) {
             case 'Point':
-                featuresPoint.addLayer(layer);
-                break;
+            featuresPoint.addLayer(layer);
+            break;
+
             case 'LineString':
             case 'Polygon':
             case 'MultiPolygon':
-                layer.on('popupopen', function() {
-                    layer.setStyle({color: '#9fc6fc'});
-                    map.fitBounds(layer.getBounds());
+            // cache original style (once)
+            if (!layer._origStyle) {
+                const o = layer.options || {};
+                layer._origStyle = {
+                color: o.color,
+                weight: o.weight,
+                fillColor: o.fillColor,
+                opacity: o.opacity,
+                fillOpacity: o.fillOpacity
+                };
+            }
+
+            layer.on('popupopen', function() {
+                const o = layer._origStyle;
+                // keep the same color, just emphasize the weight (or tweak as you like)
+                layer.setStyle({
+                color: o.color,
+                fillColor: o.fillColor,
+                weight: (o.weight || 2) + 2,
+                opacity: o.opacity ?? 2,
+                fillOpacity: o.fillOpacity ?? 0.4
                 });
-                layer.on('popupclose', function() {
-                    layer.setStyle({color: '#3388ff'});
-                });
-                featuresPoly.addLayer(layer);
-                break;
+                map.fitBounds(layer.getBounds());
+            });
+
+            layer.on('popupclose', function() {
+                layer.setStyle(layer._origStyle);
+            });
+
+            featuresPoly.addLayer(layer);
+            break;
         }
     }
 };
