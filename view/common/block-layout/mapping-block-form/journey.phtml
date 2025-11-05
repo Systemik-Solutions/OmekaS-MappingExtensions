@@ -8,5 +8,6 @@ $form->prepare();
     <h4><?= $this->translate('Journey'); ?></h4>
 </a>
 <div class="collapsible">
+    <p>Geo shapes that are not markers will be excluded from the journey.</p>
     <?= $this->formCollection($form->get('journey'), false); ?>
 </div>
