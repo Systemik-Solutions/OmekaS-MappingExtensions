@@ -342,7 +342,7 @@ class IndexController extends AbstractActionController
             foreach ($originalItemJourneyValues as $journeyValue) {
 
                 // only resource:item values participate
-                if (!is_object($journeyValue) || $journeyValue->type() != 'resource:item') {
+                if (!is_object($journeyValue) || !in_array($journeyValue->type(), ['resource', 'resource:item'], true)) {
                     continue;
                 }
 
