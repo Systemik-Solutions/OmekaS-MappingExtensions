@@ -213,27 +213,28 @@ const MappingModule = {
                         return styleForPaths;
                     },
 
-                    // NEW: colorize points; if color present we render a circleMarker
-                    pointToLayer: function (feature, latlng) {
+                  pointToLayer: function (feature, latlng) {
                         if (color) {
-                            // Create a custom-colored pin using Leaflet's built-in marker icon as a template.
-                             const markerHtml = `
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                width="38" height="38"> <!-- bigger -->
-                                <path fill="${color}" stroke="#333" stroke-width="1.5"
-                                    d="M12 2C8 2 5 5.1 5 9c0 4.6 7 13 7 13s7-8.4 7-13c0-3.9-3-7-7-7z"/>
-                                <circle cx="12" cy="9" r="3" fill="white"/>
-                            </svg>`;
+                            const markerHtml = `
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 27"
+                                width="38" height="42"> 
+                                <path fill="${color}"
+                                d="M12 1.8C8.5 1.8 5.5 5 5.5 9c0 4.8 6.5 14.5 6.5 14.5S18.5 13.8 18.5 9c0-4-3-7.2-6.5-7.2z"/>
+                                <circle cx="12" cy="9" r="2.8" fill="white"/>
+                            </svg>
+                            `;
+
                             const icon = L.divIcon({
-                                html: markerHtml,
-                                className: "custom-colored-pin",
-                                iconSize: [38, 38], // match SVG size
-                                iconAnchor: [19, 38], // anchor at bottom tip
-                                popupAnchor: [0, -40],
+                            html: markerHtml,
+                            className: "custom-colored-pin",
+                            iconSize: [38, 42],   // a little wider
+                            iconAnchor: [19, 42], // keep tip aligned
+                            popupAnchor: [0, -42],
                             });
+
                             return L.marker(latlng, { icon });
                         }
-                        // Otherwise use the standard default marker
+
                         return L.marker(latlng);
                     },
                     onEachFeature: function (feature, layer) {
