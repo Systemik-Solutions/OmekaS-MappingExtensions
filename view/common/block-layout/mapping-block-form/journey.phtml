@@ -5,7 +5,7 @@ $form->get('journey')->get('property')->setValue($data['journey']['property'] ??
 $form->prepare();
 ?>
 <a href="#" class="collapse">
-    <h4><?= $this->translate('Journey field'); ?></h4>
+    <h4><?= $this->translate('Journey'); ?></h4>
 </a>
 <div class="collapsible">
     <?= $this->formCollection($form->get('journey'), false); ?>
