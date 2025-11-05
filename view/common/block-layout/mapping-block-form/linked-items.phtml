@@ -58,13 +58,13 @@ $form->add($popupProps);
 
 ?>
 
-
-<div class="field">
-    <div class="inputs">
-        <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][map_linked_items]')); ?>
-        <?= $this->formRow($linkedProps); ?>
-        <?= $this->formRow($popupProps); ?>
-    </div>
+<a href="#" class="collapse">
+    <h4><?= $this->translate('Linked Items'); ?></h4>
+</a>
+<div class="collapsible linked-items-settings">
+    <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][map_linked_items]')); ?>
+    <?= $this->formRow($linkedProps); ?>
+    <?= $this->formRow($popupProps); ?>
 </div>
 
 
