@@ -118,3 +118,8 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+.leaflet-popup-content-wrapper{
+  max-height: 350px;
+  overflow: auto;
+}
