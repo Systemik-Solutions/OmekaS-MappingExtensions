@@ -1,22 +1,7 @@
-# Mapping
+# Mapping Extensions
 
-Mapping is a module for Omeka S which allows you to geolocate Omeka S items and
-add interactive maps to your sites and pages.
+This module is a fork of the official [Mapping](https://omeka.org/s/modules/Mapping/) module (v2.2.0), retaining all its core features and serving as a full replacement. In addition, it introduces enhanced capabilities including linked item mapping, group-based visualizations, and support for journey maps.
 
-- [Omeka S user manual](http://omeka.org/s/docs/user-manual/modules/mapping/)
-- [Omeka S developer documentation](https://omeka.org/s/docs/developer/module_docs/Mapping/)
+## License
 
-# Copyright
-
-Mapping is Copyright © 2016-present Corporation for Digital Scholarship, Vienna,
-Virginia, USA http://digitalscholar.org
-
-The Corporation for Digital Scholarship distributes the Omeka source code under
-the GNU General Public License, version 3 (GPLv3). The full text of this license
-is given in the license file.
-
-The Omeka name is a registered trademark of the Corporation for Digital Scholarship.
-
-Third-party copyright in this distribution is noted where applicable.
-
-All rights not expressly granted are reserved.
+This module is distributed under the [GNU General Public License v3.0 (GPL-3.0)](https://www.gnu.org/licenses/gpl-3.0.en.html).
