@@ -201,11 +201,13 @@ const MappingModule = {
                     ? {
                           color: color, // stroke
                           fillColor: color, // polygons
-                          weight: featureGeography.properties?.['stroke-width'] || 2,
+                          weight: featureGeography.properties?.['stroke-width'] || 6,
                           opacity: 1,
                           fillOpacity: 0.4,
                       }
-                    : {};
+                    : {
+                        weight: featureGeography.properties?.['stroke-width'] || 6,
+                    };
 
                 L.geoJSON(featureGeography, {
              
