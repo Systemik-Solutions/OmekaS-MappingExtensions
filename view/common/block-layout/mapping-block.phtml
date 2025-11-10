@@ -48,6 +48,19 @@ if ($groupMode && is_array($rows) && $rows) {
                 }
                 $legendEntries[] = ['label' => $label, 'color' => $color];
             }
+
+            if ($groupMode === 'property_value' && !empty($row['property_value']) && !empty($row['property_text'])) {
+                try {
+                    $prop = $this->api()->read('properties', (int)$row['property_value'])->getContent();
+                    $propLabel = $prop ? $prop->label() : ('Property #' . (int)$row['property_value']);
+                } catch (\Throwable $e) {
+                    $propLabel = 'Property #' . (int)$row['property_value'];
+                }
+
+                $textLabel = trim((string)$row['property_text']);
+                $label = sprintf('%s: %s', ucfirst($propLabel), $textLabel);
+                $legendEntries[] = ['label' => $label, 'color' => $color];
+            }
         }
     } catch (\Throwable $ignored) {
     }

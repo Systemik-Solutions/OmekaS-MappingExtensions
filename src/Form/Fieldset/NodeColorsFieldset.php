@@ -38,6 +38,8 @@ class NodeColorsFieldset extends Fieldset
             $norm[] = [
                 'resource_class'    => $r['resource_class']    ?? '',
                 'resource_template' => $r['resource_template'] ?? '',
+                'property_value'    => $r['property_value']    ?? '',
+                'property_text'     => $r['property_text']     ?? '', 
                 'color'             => $r['color']             ?? '#6699ff',
             ];
         }

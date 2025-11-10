@@ -74,7 +74,7 @@ class IndexController extends AbstractActionController
         $features = [];
         foreach ($featureResponse->getContent() as $feature) {
             $displayItem = $feature->item();
-            $color       = $this->getItemColor($displayItem, $groupMode, $colorRows);
+            $color       = $this->getItemColor($displayItem, $groupMode, $colorRows, $api);
             $geo = $feature->geography();
 
             if ($geo->getType() == 'Point' && method_exists($geo, 'getLongitude') && method_exists($geo, 'getLatitude')) {
@@ -277,7 +277,7 @@ class IndexController extends AbstractActionController
             // For each linked item, emit a "feature row":
             foreach (array_keys($originalToLinked[$origItemId]) as $linkedId) {
                 $displayItem = $this->getItemById($linkedId, $api, $itemCache);
-                $color       = $this->getItemColor($displayItem, $groupMode, $colorRows);
+                $color       = $this->getItemColor($displayItem, $groupMode, $colorRows, $api);
 
                 $geo = $feature->geography();
 
@@ -371,7 +371,7 @@ class IndexController extends AbstractActionController
                             (int) $journeyPlaceMappingFeature->id(), // feature_id 
                             (int) $journeyPlace->id(),              // resource_id 
                             $geography,                             // geography 
-                            $this->getItemColor($originalItem, $groupMode, $colorRows) //color
+                            $this->getItemColor($originalItem, $groupMode, $colorRows, $api) //color
                         ];
                         break;
                     }
@@ -393,7 +393,7 @@ class IndexController extends AbstractActionController
                     (int) $featureID,
                     (int) $originalItem->id(),
                     $lineFeature,
-                    $this->getItemColor($originalItem, $groupMode, $colorRows) //color
+                    $this->getItemColor($originalItem, $groupMode, $colorRows, $api) //color
                 ];
             }
         }
@@ -435,7 +435,7 @@ class IndexController extends AbstractActionController
     }
 
     // Determine item color based on grouping mode and color rows
-    private function getItemColor($item,  $groupMode, $colorRows)
+    private function getItemColor($item,  $groupMode, $colorRows, $api)
     {
         if (!$item || !$groupMode || !$colorRows) return null;
         if ($groupMode === 'resource_class') {
@@ -457,6 +457,43 @@ class IndexController extends AbstractActionController
             foreach ($colorRows as $row) {
                 if (!empty($row['resource_template']) && (int)$row['resource_template'] === (int)$rtId) {
                     return $row['color'] ?? null;
+                }
+            }
+            return null;
+        }
+
+        if ($groupMode === 'property_value') {
+            foreach ($colorRows as $row) {
+                $propId = isset($row['property_value']) ? (int) $row['property_value'] : 0;
+                $matchText = trim((string) ($row['property_text'] ?? ''));
+                if ($propId <= 0 || $matchText === '') {
+                    continue;
+                }
+
+                $term = null;
+                try {
+                    $prop = $api->read('properties', $propId)->getContent();
+                    if ($prop) {
+                        $term = $prop->term(); 
+                    }
+                } catch (\Throwable $e) {
+                    $term = null;
+                }
+                if (!$term) {
+                    continue;
+                }
+
+                // Get all literal values for this property
+                $values = $item->value($term, ['all' => true]);
+                if (!$values) {
+                    continue;
+                }
+
+                foreach ($values as $v) {
+                    $val = trim((string) ($v->value() ?? (string) $v));
+                    if (strcasecmp($val, $matchText) === 0) {
+                        return $row['color'] ?? null; 
+                    }
                 }
             }
             return null;

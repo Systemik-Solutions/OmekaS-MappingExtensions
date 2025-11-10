@@ -13,10 +13,11 @@ class GroupByFieldset extends Fieldset
             'type' => Select::class,
             'name' => 'group-by-select',
             'options' => [
-                'label' => 'Group by', // @translate
+                'label' => 'Group by',
                 'value_options' => [
-                    'resource_class'    => 'Resource class',    // @translate
-                    'resource_template' => 'Resource template', // @translate
+                    'resource_class'    => 'Resource class',   
+                    'resource_template' => 'Resource template',
+                    'property_value'    => 'Property value',    
                 ],
             ],
             'attributes' => [

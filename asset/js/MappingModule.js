@@ -210,12 +210,10 @@ const MappingModule = {
                     };
 
                 L.geoJSON(featureGeography, {
-             
-                    style: function (/* feature */) {
+                    style: function () {
                         return styleForPaths;
                     },
-
-                  pointToLayer: function (feature, latlng) {
+                    pointToLayer: function (feature, latlng) {
                         if (color) {
                             const markerHtml = `
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 27"

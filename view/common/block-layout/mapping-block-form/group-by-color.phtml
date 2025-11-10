@@ -46,12 +46,18 @@ $form->prepare();
         }
 
         function applyVisibilityForGroup($scope) {
-            const mode = currentGroupMode($scope); // 'resource_class' | 'resource_template'
+            const mode = currentGroupMode($scope); // 'resource_class' | 'resource_template' | 'property_value'
             $scope.find('select.mp--rc').each(function() {
                 $(this).closest('.field').toggle(mode === 'resource_class');
             });
             $scope.find('select.mp--rt').each(function() {
                 $(this).closest('.field').toggle(mode === 'resource_template');
+            });
+            $scope.find('select.mp--pv').each(function() {
+                $(this).closest('.field').toggle(mode === 'property_value');
+            });
+            $scope.find('input.mp--pt').each(function() {
+                $(this).closest('.field').toggle(mode === 'property_value');
             });
         }
 
