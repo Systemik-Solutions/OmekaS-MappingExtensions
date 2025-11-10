@@ -35,6 +35,7 @@ class BlockLayoutMapQueryForm extends Form
 
     public function prepareBlockData(array $rawData)
     {
+        error_log(json_encode($rawData));
         $data = array_merge(
             $this->get('default_view')->filterBlockData($rawData),
             $this->get('overlays')->filterBlockData($rawData),
@@ -58,6 +59,13 @@ class BlockLayoutMapQueryForm extends Form
                     ? array_map('trim', explode(',', $rawData['popup_display_properties']))
                     : []),
         ]);
+
+        $ppOrder = array_filter(array_map('trim', explode(',', (string)($rawData['popup_display_properties__order'] ?? ''))));
+        if ($ppOrder) {
+            $ordered = array_values(array_intersect($ppOrder, $data['popup_display_properties']));
+            $rest    = array_values(array_diff($data['popup_display_properties'], $ordered));
+            $data['popup_display_properties'] = array_merge($ordered, $rest);
+        }
 
         $this->setData([
             'default_view' => [

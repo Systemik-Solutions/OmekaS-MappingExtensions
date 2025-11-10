@@ -56,6 +56,10 @@ $popupProps->setAttributes([
 $popupProps->setValue($data['popup_display_properties'] ?? []);
 $form->add($popupProps);
 
+// Hidden input to store popup property order 
+$popupOrder = new \Laminas\Form\Element\Hidden('o:block[__blockIndex__][o:data][popup_display_properties__order]');
+$popupOrder->setValue(implode(',', $data['popup_display_properties'] ?? []));
+$form->add($popupOrder);
 ?>
 
 <a href="#" class="collapse">
@@ -65,41 +69,81 @@ $form->add($popupProps);
     <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][map_linked_items]')); ?>
     <?= $this->formRow($linkedProps); ?>
     <?= $this->formRow($popupProps); ?>
+    <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][popup_display_properties__order]')); // hidden 
+    ?>
 </div>
 
-
 <script>
-    (function($) {
-        function initRelProps(scope) {
-            $(scope).find('select.linked-prop-select, select.popup-prop-select').each(function() {
-                const $s = $(this);
-                if ($s.data('ngChosenInit')) return;
+(function($){
+    // Sync hidden order field from the popup multi-select
+    function syncPopupOrder($select) {
+        const name = $select.attr('name') || '';
+        if (name.indexOf('][popup_display_properties]') === -1) return;
 
-                if ($.fn.chosen) {
-                    try {
-                        $s.chosen({
-                            width: '100%',
-                            include_group_label_in_selected: true,
-                            placeholder_text_multiple: $s.data('placeholder') || 'Select one or more properties…',
-                        });
-                        $s.data('ngChosenInit', 1);
-                    } catch (e) {
-                        console.error('MappingPlus: Chosen init failed', e);
-                    }
+        // Strip trailing [] from the multi-select name
+        const baseName = name.replace(/\[\]$/, '');
+
+        // Build the hidden field's name from the base
+        const hiddenName = baseName.replace(
+            '][popup_display_properties]',
+            '][popup_display_properties__order]'
+        );
+
+        // Find the hidden input
+        const $hidden = $('input[name="' + hiddenName.replace(/([\[\]])/g, '\\$1') + '"]');
+        if (!$hidden.length) return;
+
+        // Selected values (in current DOM order)
+        const selected = $select.val() || [];
+
+        // Existing order (comma-separated)
+        let order = ($hidden.val() || '').split(',').filter(Boolean);
+
+        // Prune deselected
+        order = order.filter(v => selected.indexOf(v) !== -1);
+        // Append newly selected at the end
+        selected.forEach(v => { if (order.indexOf(v) === -1) order.push(v); });
+
+        $hidden.val(order.join(','));
+    }
+
+    function initRelProps(scope) {
+        $(scope).find('select.linked-prop-select, select.popup-prop-select').each(function() {
+            const $s = $(this);
+            if ($s.data('ngChosenInit')) return;
+
+            if ($.fn.chosen) {
+                try {
+                    $s.chosen({
+                        width: '100%',
+                        include_group_label_in_selected: true,
+                        placeholder_text_multiple:
+                            $s.data('placeholder') || 'Select one or more properties…',
+                    });
+                    $s.data('ngChosenInit', 1);
+                } catch (e) {
+                    console.error('MappingPlus: Chosen init failed', e);
                 }
-            });
-        }
+            }
 
-        $(function() {
-            initRelProps(document);
+            // Only track the popup properties select
+            if ($s.hasClass('popup-prop-select')) {
+                // Initial sync (covers the case where user doesn't touch the control)
+                syncPopupOrder($s);
+
+                // Keep synced on any change
+                $s.off('change.mpPopupOrder').on('change.mpPopupOrder', function() {
+                    syncPopupOrder($s);
+                });
+            }
+        });
+    }
+
+    $(function(){ initRelProps(document); });
+    $(document)
+        .on('o:form-loaded o:block-added o:form-updated o:collection-add', function(_e, ctx) {
+            initRelProps(ctx || document);
         });
 
-        $(document)
-            .on('o:form-loaded o:block-added o:form-updated', function(_e, ctx) {
-                initRelProps(ctx || document);
-            })
-            .on('o:collection-add', function(_e, ctx) {
-                initRelProps(ctx || document);
-            });
-    })(jQuery);
+})(jQuery);
 </script>
