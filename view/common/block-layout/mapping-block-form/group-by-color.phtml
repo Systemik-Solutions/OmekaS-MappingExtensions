@@ -53,7 +53,8 @@ $form->prepare();
             $scope.find('select.mp--rt').each(function() {
                 $(this).closest('.field').toggle(mode === 'resource_template');
             });
-            $scope.find('select.mp--pv').each(function() {
+
+            $scope.find('select.mp-group-by-property-value').each(function() {
                 $(this).closest('.field').toggle(mode === 'property_value');
             });
             $scope.find('input.mp--pt').each(function() {

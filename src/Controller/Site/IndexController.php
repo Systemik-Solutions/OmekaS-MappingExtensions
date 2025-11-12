@@ -48,20 +48,16 @@ class IndexController extends AbstractActionController
 
         $api     = $this->api();
 
-        // Node color specifications
-        $groupMode  = $blockData['group_by_control']['group-by-select'] ?? '';
-        $colorRows  = $blockData['node_colors']['rows'] ?? [];
-
         $featuresPage = (int) $this->params()->fromQuery('features_page', 1);
         if (!empty($blockData['journey']) && ($blockData['journey']['property']) && $blockData['journey']['property'] != '') {
-            return $this->getFeatureActionforJourneyItems($blockData, $api, $itemsQuery, $featuresPage, $groupMode, $colorRows);
+            return $this->getFeatureActionforJourneyItems($blockData, $api, $itemsQuery, $featuresPage);
         }
 
         // Original items (geo-located candidates)
         $itemIds = $api->search('items', $itemsQuery, ['returnScalar' => 'id'])->getContent();
 
         if (!empty($blockData['map_linked_items']) && $itemIds) {
-            return $this->getFeaturesActionForLinkedItems($itemIds, $blockData, $api, $itemsQuery, $featuresQuery, $groupMode, $colorRows);
+            return $this->getFeaturesActionForLinkedItems($itemIds, $blockData, $api, $itemsQuery, $featuresQuery);
         }
 
         // --- Default behavior (no linked-items mode): use items' own geometry ---
@@ -74,7 +70,7 @@ class IndexController extends AbstractActionController
         $features = [];
         foreach ($featureResponse->getContent() as $feature) {
             $displayItem = $feature->item();
-            $color       = $this->getItemColor($displayItem, $groupMode, $colorRows, $api);
+            $color       = $this->getItemColor($displayItem, $blockData, $api);
             $geo = $feature->geography();
 
             if ($geo->getType() == 'Point' && method_exists($geo, 'getLongitude') && method_exists($geo, 'getLatitude')) {
@@ -145,7 +141,7 @@ class IndexController extends AbstractActionController
     }
 
     // --- Linked-items mode: show linked items using ORIGINALS' geography ---
-    private function getFeaturesActionForLinkedItems($originalItemIds, $blockData, $api, $itemsQuery, $featuresQuery, $groupMode, $colorRows)
+    private function getFeaturesActionForLinkedItems($originalItemIds, $blockData, $api, $itemsQuery, $featuresQuery)
     {
         $itemCache = [];
         $propIdCache   = [];
@@ -277,7 +273,7 @@ class IndexController extends AbstractActionController
             // For each linked item, emit a "feature row":
             foreach (array_keys($originalToLinked[$origItemId]) as $linkedId) {
                 $displayItem = $this->getItemById($linkedId, $api, $itemCache);
-                $color       = $this->getItemColor($displayItem, $groupMode, $colorRows, $api);
+                $color       = $this->getItemColor($displayItem, $blockData, $api);
 
                 $geo = $feature->geography();
 
@@ -307,7 +303,7 @@ class IndexController extends AbstractActionController
     }
 
     // --- Journey mode: build features from journey property on ORIGINAL items ---
-    private function getFeatureActionforJourneyItems($blockData, $api, $itemsQuery, $featuresPage, $groupMode, $colorRows)
+    private function getFeatureActionforJourneyItems($blockData, $api, $itemsQuery, $featuresPage)
     {
         if ($featuresPage > 1) {
             return new \Laminas\View\Model\JsonModel([]);
@@ -371,7 +367,7 @@ class IndexController extends AbstractActionController
                             (int) $journeyPlaceMappingFeature->id(), // feature_id 
                             (int) $journeyPlace->id(),              // resource_id 
                             $geography,                             // geography 
-                            $this->getItemColor($originalItem, $groupMode, $colorRows, $api) //color
+                            $this->getItemColor($originalItem, $blockData, $api) //color
                         ];
                         break;
                     }
@@ -393,7 +389,7 @@ class IndexController extends AbstractActionController
                     (int) $featureID,
                     (int) $originalItem->id(),
                     $lineFeature,
-                    $this->getItemColor($originalItem, $groupMode, $colorRows, $api) //color
+                    $this->getItemColor($originalItem, $blockData, $api) //color
                 ];
             }
         }
@@ -435,8 +431,12 @@ class IndexController extends AbstractActionController
     }
 
     // Determine item color based on grouping mode and color rows
-    private function getItemColor($item,  $groupMode, $colorRows, $api)
+    private function getItemColor($item,  $blockData, $api)
     {
+        $groupMode  = $blockData['group_by_control']['group-by-select'] ?? '';
+        $groupByPropertyValue = $blockData['group_by_control']['property_value'] ?? '';
+        $colorRows  = $blockData['node_colors']['rows'] ?? [];
+
         if (!$item || !$groupMode || !$colorRows) return null;
         if ($groupMode === 'resource_class') {
             $rc = $item->resourceClass();
@@ -463,42 +463,42 @@ class IndexController extends AbstractActionController
         }
 
         if ($groupMode === 'property_value') {
+            $term = trim((string) ($groupByPropertyValue));
+            if ($term === '') return null;
+
+            $propIdForTerm = null;
+            try {
+                $propRep = $api->searchOne('properties', ['term' => $term])->getContent();
+                if ($propRep) $propIdForTerm = (int) $propRep->id();
+            } catch (\Throwable $e) {
+                $propIdForTerm = null;
+            }
+
+            // Collect this item's values for the chosen term
+            $vals = $item->value($term, ['all' => true]) ?: [];
+            if (!$vals) return null;
+
+            $itemTexts = [];
+            foreach ($vals as $v) {
+                $itemTexts[] = trim((string) ($v->value() ?? (string) $v));
+            }
+
+            // Find first matching row: same property (if id provided) + text match (case-insensitive)
             foreach ($colorRows as $row) {
-                $propId = isset($row['property_value']) ? (int) $row['property_value'] : 0;
-                $matchText = trim((string) ($row['property_text'] ?? ''));
-                if ($propId <= 0 || $matchText === '') {
-                    continue;
-                }
+                $rowPropId = isset($row['property_value']) ? (int) $row['property_value'] : 0;
+                if ($rowPropId && $propIdForTerm && $rowPropId !== $propIdForTerm) continue;
 
-                $term = null;
-                try {
-                    $prop = $api->read('properties', $propId)->getContent();
-                    if ($prop) {
-                        $term = $prop->term(); 
-                    }
-                } catch (\Throwable $e) {
-                    $term = null;
-                }
-                if (!$term) {
-                    continue;
-                }
+                $needle = trim((string) ($row['property_text'] ?? ''));
+                if ($needle === '') continue;
 
-                // Get all literal values for this property
-                $values = $item->value($term, ['all' => true]);
-                if (!$values) {
-                    continue;
-                }
-
-                foreach ($values as $v) {
-                    $val = trim((string) ($v->value() ?? (string) $v));
-                    if (strcasecmp($val, $matchText) === 0) {
-                        return $row['color'] ?? null; 
+                foreach ($itemTexts as $txt) {
+                    if (strcasecmp($txt, $needle) === 0) {
+                        return $row['color'] ?? null;
                     }
                 }
             }
             return null;
         }
-
         return null;
     }
 }

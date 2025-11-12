@@ -35,7 +35,6 @@ class BlockLayoutMapQueryForm extends Form
 
     public function prepareBlockData(array $rawData)
     {
-        error_log(json_encode($rawData));
         $data = array_merge(
             $this->get('default_view')->filterBlockData($rawData),
             $this->get('overlays')->filterBlockData($rawData),
@@ -90,6 +89,7 @@ class BlockLayoutMapQueryForm extends Form
             ],
             'group_by_control' => [
                 'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',
+                'property_value'  => $data['group_by_control']['property_value'] ?? '',
             ],
             'node_colors' => [
                 'rows' => $data['node_colors']['rows'] ?? [],

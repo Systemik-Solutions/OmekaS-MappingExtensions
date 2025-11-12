@@ -21,7 +21,9 @@ if ($isTimeline) {
 // Build legend entries from configured group colors
 $legendEntries = [];
 $groupMode = $data['group_by_control']['group-by-select'] ?? '';
+$groupByPropertyValue = $data['group_by_control']['property_value'] ?? '';
 $rows      = $data['node_colors']['rows'] ?? [];
+
 
 if ($groupMode && is_array($rows) && $rows) {
     try {
@@ -49,17 +51,27 @@ if ($groupMode && is_array($rows) && $rows) {
                 $legendEntries[] = ['label' => $label, 'color' => $color];
             }
 
-            if ($groupMode === 'property_value' && !empty($row['property_value']) && !empty($row['property_text'])) {
+    
+            if ($groupMode === 'property_value' && $groupByPropertyValue !== '' && !empty($row['property_text'])) {
+                $propLabel = $groupByPropertyValue;
+                
                 try {
-                    $prop = $this->api()->read('properties', (int)$row['property_value'])->getContent();
-                    $propLabel = $prop ? $prop->label() : ('Property #' . (int)$row['property_value']);
+                    // Try to read the property by term (not ID)
+                    $prop = $this->api()->searchOne('properties', ['term' => $groupByPropertyValue])->getContent();
+                    if ($prop) {
+                        $propLabel = $prop->label();
+                    }
                 } catch (\Throwable $e) {
-                    $propLabel = 'Property #' . (int)$row['property_value'];
+                    // fall back to the term itself
                 }
 
-                $textLabel = trim((string)$row['property_text']);
+                $textLabel = trim((string) $row['property_text']);
                 $label = sprintf('%s: %s', ucfirst($propLabel), $textLabel);
-                $legendEntries[] = ['label' => $label, 'color' => $color];
+
+                $legendEntries[] = [
+                    'label' => $label,
+                    'color' => $color,
+                ];
             }
         }
     } catch (\Throwable $ignored) {
@@ -99,6 +111,7 @@ $legendId = 'mapping-legend-' . uniqid();
                     line-height: 1.3;
                     box-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
                     border-radius: 10px;
+                    font-size: 17px;
                     background-color: white;">
         </div>
     <?php endif; ?>

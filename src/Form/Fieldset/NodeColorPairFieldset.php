@@ -7,7 +7,6 @@ use Laminas\Form\Element\Text;
 use Laminas\Form\Element\Button;
 use Omeka\Form\Element\ResourceClassSelect;
 use Omeka\Form\Element\ResourceTemplateSelect;
-use Omeka\Form\Element\PropertySelect;
 
 class NodeColorPairFieldset extends Fieldset
 {
@@ -36,19 +35,6 @@ class NodeColorPairFieldset extends Fieldset
             ],
             'attributes' => [
                 'class' => 'mp-target mp--rt',
-            ],
-        ]);
-
-        // Target: property (term picker)
-        $this->add([
-            'type' => PropertySelect::class,
-            'name' => 'property_value',
-            'options' => [
-                'label'              => 'Property value',
-                'empty_option'       => '',
-            ],
-            'attributes' => [
-                'class' => 'mp-target mp--pv chosen-select',
             ],
         ]);
 

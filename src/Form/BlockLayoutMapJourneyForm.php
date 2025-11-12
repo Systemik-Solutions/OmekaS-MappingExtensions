@@ -63,6 +63,7 @@ class BlockLayoutMapJourneyForm extends Form
             ],
             'group_by_control' => [
                 'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',
+                'property_value'  => $data['group_by_control']['property_value'] ?? '',
             ],
             'node_colors' => [
                 'rows' => $data['node_colors']['rows'] ?? [],
