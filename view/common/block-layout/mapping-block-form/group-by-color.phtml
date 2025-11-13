@@ -42,24 +42,26 @@ $form->prepare();
 <script>
     (function($) {
         function currentGroupMode($scope) {
-            return $scope.find('select.mp_group_by_select').first().val() || 'resource_class';
+            return $scope.find('select.mp_group_by_select').first().val() || 'none';
         }
 
         function applyVisibilityForGroup($scope) {
-            const mode = currentGroupMode($scope); // 'resource_class' | 'resource_template' | 'property_value'
-            $scope.find('select.mp--rc').each(function() {
-                $(this).closest('.field').toggle(mode === 'resource_class');
-            });
-            $scope.find('select.mp--rt').each(function() {
-                $(this).closest('.field').toggle(mode === 'resource_template');
-            });
+            const mode = currentGroupMode($scope);
 
-            $scope.find('select.mp-group-by-property-value').each(function() {
-                $(this).closest('.field').toggle(mode === 'property_value');
-            });
-            $scope.find('input.mp--pt').each(function() {
-                $(this).closest('.field').toggle(mode === 'property_value');
-            });
+            // --- NEW: hide everything except group-by-select when "none" ---
+            const showColors = mode !== 'none';
+            $scope.find('.color-fields').toggle(showColors);
+            $scope.find('.mp-add-color').toggle(showColors);
+
+            // Hide the property selector inside group_by_control
+            $scope.find('select.mp-group-by-property-value')
+                .closest('.field')
+                .toggle(mode === 'property_value');
+
+            // Hide resource class/template selectors
+            $scope.find('select.mp--rc').closest('.field').toggle(mode === 'resource_class');
+            $scope.find('select.mp--rt').closest('.field').toggle(mode === 'resource_template');
+            $scope.find('input.mp--pt').closest('.field').toggle(mode === 'property_value');
         }
 
         function nextRowIndex($scope) {

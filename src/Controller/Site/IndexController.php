@@ -437,6 +437,9 @@ class IndexController extends AbstractActionController
         $groupByPropertyValue = $blockData['group_by_control']['property_value'] ?? '';
         $colorRows  = $blockData['node_colors']['rows'] ?? [];
 
+        if ($groupMode === 'none') {
+            return null;
+        }
         if (!$item || !$groupMode || !$colorRows) return null;
         if ($groupMode === 'resource_class') {
             $rc = $item->resourceClass();

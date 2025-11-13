@@ -19,6 +19,7 @@ class GroupByFieldset extends Fieldset
                     'resource_class'    => 'Resource class',
                     'resource_template' => 'Resource template',
                     'property_value'    => 'Property value',
+                    'none'              => 'None',
                 ],
             ],
             'attributes' => [
