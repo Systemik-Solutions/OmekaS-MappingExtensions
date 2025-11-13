@@ -46,12 +46,22 @@ class BlockLayoutMapForm extends Form
                 : (strlen(trim((string)($rawData['linked_properties'] ?? ''))) > 0
                     ? array_map('trim', explode(',', $rawData['linked_properties']))
                     : []),
-
-            'popup_display_properties' => is_array($rawData['popup_display_properties'] ?? null)
-                ? array_values($rawData['popup_display_properties'])
-                : (strlen(trim((string)($rawData['popup_display_properties'] ?? ''))) > 0
-                    ? array_map('trim', explode(',', $rawData['popup_display_properties']))
-                    : []),
+            'popup_display_properties' =>
+                array_values(
+                    array_filter(
+                        array_map(
+                            'trim',
+                            is_array($rawData['popup_display_properties'] ?? null)
+                                ? $rawData['popup_display_properties']
+                                : (
+                                    strlen(trim((string)($rawData['popup_display_properties'] ?? ''))) > 0
+                                    ? explode(',', $rawData['popup_display_properties'])
+                                    : []
+                                )
+                        ),
+                        fn($v) => $v !== ''
+                    )
+                ),
         ]);
 
         $this->setData([

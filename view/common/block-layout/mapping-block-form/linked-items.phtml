@@ -8,6 +8,9 @@ $services = $this->getHelperPluginManager()->getServiceLocator();
 $formElementManager = $services->get('FormElementManager');
 $view = $this;
 
+error_log(json_encode($data));
+
+
 // 1) Checkbox — "Map linked items instead" (unchecked by default)
 $mapLinkedItems = new \Laminas\Form\Element\Checkbox('o:block[__blockIndex__][o:data][map_linked_items]');
 $mapLinkedItems->setOptions([
@@ -38,28 +41,27 @@ $linkedProps->setAttributes([
 $linkedProps->setValue($data['linked_properties'] ?? []);
 $form->add($linkedProps);
 
-// 3) Dropdown — "Display properties in Popup" (multiple PropertySelect)
-$popupProps = $formElementManager->get(\Omeka\Form\Element\PropertySelect::class);
-$popupProps->setName('o:block[__blockIndex__][o:data][popup_display_properties]');
-$popupProps->setOptions([
+
+// 3) Display properties in Popup — ONE property per row (order = row order)
+$popupBase = $formElementManager->get(\Omeka\Form\Element\PropertySelect::class);
+$popupBase->setOptions([
     'label'              => $view->translate('Display properties in Popup'),
     'empty_option'       => '',
     'term_as_value'      => true,
     'use_hidden_element' => true,
 ]);
-$popupProps->setAttributes([
-    'multiple'         => true,
+$popupBase->setAttributes([
     'class'            => 'chosen-select popup-prop-select',
-    'data-placeholder' => $view->translate('Select one or more properties…'),
-    'value'            => $data['popup_display_properties'] ?? [],
+    'data-placeholder' => $view->translate('Select a property…'),
 ]);
-$popupProps->setValue($data['popup_display_properties'] ?? []);
-$form->add($popupProps);
 
-// Hidden input to store popup property order 
-$popupOrder = new \Laminas\Form\Element\Hidden('o:block[__blockIndex__][o:data][popup_display_properties__order]');
-$popupOrder->setValue(implode(',', $data['popup_display_properties'] ?? []));
-$form->add($popupOrder);
+// The saved ordered list of terms
+$popupValues = $data['popup_display_properties'] ?? [];
+// If none saved, show one empty row
+if (!$popupValues) {
+    $popupValues = [''];
+}
+
 ?>
 
 <a href="#" class="collapse">
@@ -68,82 +70,138 @@ $form->add($popupOrder);
 <div class="collapsible linked-items-settings">
     <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][map_linked_items]')); ?>
     <?= $this->formRow($linkedProps); ?>
-    <?= $this->formRow($popupProps); ?>
-    <?= $this->formRow($form->get('o:block[__blockIndex__][o:data][popup_display_properties__order]')); // hidden 
-    ?>
+
+    <div class="popup-props-wrapper">
+        <div class="popup-props-rows">
+            <?php foreach ($popupValues as $val): ?>
+                <?php
+                $rowEl = clone $popupBase;
+                $rowEl->setName('o:block[__blockIndex__][o:data][popup_display_properties][]');
+                $rowEl->setValue($val);
+                ?>
+                <div class="popup-prop-row" style="display: flex;">
+                    <?= $this->formRow($rowEl); ?>
+                    <button type="button"
+                        class="button popup-prop-remove"
+                        style="margin-left:.5rem;margin-top:1.2%;max-height:20px">×</button>
+                </div>
+            <?php endforeach; ?>
+
+            <?php
+            // Hidden template for new rows
+            $tplEl = clone $popupBase;
+            $tplEl->setName('o:block[__blockIndex__][o:data][popup_display_properties][]');
+            $tplEl->setValue(''); // empty by default
+
+            // Build the same HTML structure as above
+            $tplHtml = '<div class="popup-prop-row" style="display: flex;">'
+                . $this->formRow($tplEl)
+                . '<button type="button" class="button popup-prop-remove" '
+                . 'style="margin-left:.5rem;margin-top:1.2%;max-height:20px">×</button>'
+                . '</div>';
+            ?>
+            <span class="popup-prop-template"
+                data-template="<?= $this->escapeHtml($tplHtml); ?>"
+                style="display:none;"></span>
+        </div>
+
+        <button type="button"
+            class="button popup-prop-add"
+            style="margin-top:.5rem;">
+            + <?= $this->escapeHtml($this->translate('Add property')) ?>
+        </button>
+    </div>
 </div>
 
 <script>
-(function($){
-    // Sync hidden order field from the popup multi-select
-    function syncPopupOrder($select) {
-        const name = $select.attr('name') || '';
-        if (name.indexOf('][popup_display_properties]') === -1) return;
+    (function($) {
+        function initRelProps(scope) {
+            $(scope).find('select.linked-prop-select, select.popup-prop-select').each(function() {
+                const $s = $(this);
+                if ($s.data('ngChosenInit')) return;
 
-        // Strip trailing [] from the multi-select name
-        const baseName = name.replace(/\[\]$/, '');
-
-        // Build the hidden field's name from the base
-        const hiddenName = baseName.replace(
-            '][popup_display_properties]',
-            '][popup_display_properties__order]'
-        );
-
-        // Find the hidden input
-        const $hidden = $('input[name="' + hiddenName.replace(/([\[\]])/g, '\\$1') + '"]');
-        if (!$hidden.length) return;
-
-        // Selected values (in current DOM order)
-        const selected = $select.val() || [];
-
-        // Existing order (comma-separated)
-        let order = ($hidden.val() || '').split(',').filter(Boolean);
-
-        // Prune deselected
-        order = order.filter(v => selected.indexOf(v) !== -1);
-        // Append newly selected at the end
-        selected.forEach(v => { if (order.indexOf(v) === -1) order.push(v); });
-
-        $hidden.val(order.join(','));
-    }
-
-    function initRelProps(scope) {
-        $(scope).find('select.linked-prop-select, select.popup-prop-select').each(function() {
-            const $s = $(this);
-            if ($s.data('ngChosenInit')) return;
-
-            if ($.fn.chosen) {
-                try {
-                    $s.chosen({
-                        width: '100%',
-                        include_group_label_in_selected: true,
-                        placeholder_text_multiple:
-                            $s.data('placeholder') || 'Select one or more properties…',
-                    });
-                    $s.data('ngChosenInit', 1);
-                } catch (e) {
-                    console.error('MappingPlus: Chosen init failed', e);
+                if ($.fn.chosen) {
+                    try {
+                        $s.chosen({
+                            width: '100%',
+                            include_group_label_in_selected: true,
+                            placeholder_text_multiple: $s.data('placeholder') || 'Select one or more properties…',
+                            placeholder_text_single: $s.data('placeholder') || 'Select a property…'
+                        });
+                        $s.data('ngChosenInit', 1);
+                    } catch (e) {
+                        console.error('MappingPlus: Chosen init failed', e);
+                    }
                 }
-            }
+            });
+        }
 
-            // Only track the popup properties select
-            if ($s.hasClass('popup-prop-select')) {
-                // Initial sync (covers the case where user doesn't touch the control)
-                syncPopupOrder($s);
+        function wirePopupRows(scope) {
+            const $scope = $(scope);
+            if ($scope.data('popup-rows-wired')) return;
+            $scope.data('popup-rows-wired', true);
 
-                // Keep synced on any change
-                $s.off('change.mpPopupOrder').on('change.mpPopupOrder', function() {
-                    syncPopupOrder($s);
+            // Add new row
+            $scope.on('click', '.popup-prop-add', function(e) {
+                e.preventDefault();
+
+                const $wrapper = $scope.find('.popup-props-rows').first();
+                const $tmpl = $wrapper.find('.popup-prop-template').first();
+                if (!$tmpl.length) return;
+
+                // 1) Get the raw HTML from data-template
+                let tplHtml = $tmpl.attr('data-template') || '';
+                if (!tplHtml) return;
+
+                // 2) Find this block's real index (e.g. o:block[3]…)
+                const anyName = $scope.find('[name^="o:block["]').first().attr('name') || '';
+                const m = anyName.match(/^o:block\[(\d+)]/);
+                const blockIndex = m ? m[1] : '__blockIndex__';
+
+                // 3) Replace __blockIndex__ placeholders with the real index
+                tplHtml = tplHtml.replace(/__blockIndex__/g, blockIndex);
+
+                // 4) Turn into a DOM node and insert before the template span
+                const $row = $(tplHtml);
+                $row.insertBefore($tmpl);
+
+                // 5) Init Chosen for the new select
+                const $sel = $row.find('select.popup-prop-select');
+                if ($.fn.chosen && $sel.length) {
+                    try {
+                        $sel.chosen({
+                            width: '100%',
+                            include_group_label_in_selected: true,
+                            placeholder_text_single: $sel.data('placeholder') || 'Select a property…'
+                        });
+                        $sel.data('ngChosenInit', 1);
+                    } catch (err) {
+                        console.error('MappingPlus: Chosen init failed on new row', err);
+                    }
+                }
+            });
+
+            // Remove row (unchanged)
+            $scope.on('click', '.popup-prop-remove', function(e) {
+                e.preventDefault();
+                const $row = $(this).closest('.popup-prop-row');
+                $row.remove();
+            });
+        }
+        $(function() {
+            initRelProps(document);
+            $('.linked-items-settings').each(function() {
+                wirePopupRows(this);
+            });
+        });
+
+        $(document)
+            .on('o:form-loaded o:block-added o:form-updated o:collection-add', function(_e, ctx) {
+                const scope = ctx || document;
+                initRelProps(scope);
+                $(scope).find('.linked-items-settings').each(function() {
+                    wirePopupRows(this);
                 });
-            }
-        });
-    }
-
-    $(function(){ initRelProps(document); });
-    $(document)
-        .on('o:form-loaded o:block-added o:form-updated o:collection-add', function(_e, ctx) {
-            initRelProps(ctx || document);
-        });
-
-})(jQuery);
+            });
+    })(jQuery);
 </script>
