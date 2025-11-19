@@ -103,7 +103,7 @@ class IndexController extends AbstractActionController
             return strcasecmp($a['label'], $b['label']);
         });
         $legendEntries = array_values($legendMap);
-        
+
         return new \Laminas\View\Model\JsonModel([
             'features' => $features,
             'legend'   => $legendEntries,
@@ -511,7 +511,7 @@ class IndexController extends AbstractActionController
 
             // color set , return default color
             if (!$hasConfiguredRow) {
-                return '#6699ff';
+                return $this->getAutoColor('rc:' . $rcId);
             }
 
             return null;
@@ -540,7 +540,7 @@ class IndexController extends AbstractActionController
 
             // No color set , return default color
             if (!$hasConfiguredRow) {
-                return '#6699ff';
+                return $this->getAutoColor('rt:' . $rtId);
             }
 
             return null;
@@ -600,8 +600,12 @@ class IndexController extends AbstractActionController
             }
 
             // If no valid rows configured for this property,
-            // fall back to a default color for ANY item that has the term.
             if (!$hasConfiguredRow) {
+                if (!empty($itemTexts)) {
+                    $first   = mb_strtolower($itemTexts[0]);
+                    $autoKey = 'pv:' . $term . ':' . $first;
+                    return $this->getAutoColor($autoKey);
+                }
                 return '#6699ff';
             }
 
@@ -657,7 +661,7 @@ class IndexController extends AbstractActionController
             $label = $rc->label() ?: ('Class #' . $rcId);
             $legendMap[$key] = [
                 'label' => $label,
-                'color' => $color ?: '#6699ff',
+                'color' => $color ?? $this->getAutoColor('rc:' . $rcId),
             ];
             return;
         }
@@ -693,7 +697,7 @@ class IndexController extends AbstractActionController
             $label = $rt->label() ?: ('Template #' . $rtId);
             $legendMap[$key] = [
                 'label' => $label,
-                'color' => $color ?: '#6699ff',
+                'color' => $color ?? $this->getAutoColor('rt:' . $rtId),
             ];
             return;
         }
@@ -771,29 +775,61 @@ class IndexController extends AbstractActionController
                 }
             } else {
                 // NO valid rows configured: treat as "default" grouping.
-                // Build legend entries from actual item values.
+                // Build ONE legend entry based on the FIRST value, same as getItemColor().
                 $vals = $item->value($term, ['all' => true]) ?: [];
                 if (!$vals) {
                     return;
                 }
 
+                $firstText = '';
                 foreach ($vals as $v) {
-                    $txt = trim((string) ($v->value() ?? (string) $v));
-                    if ($txt === '') {
-                        continue;
+                    $firstText = trim((string) ($v->value() ?? (string) $v));
+                    if ($firstText !== '') {
+                        break;
                     }
-
-                    $key = 'pv:' . $term . ':' . mb_strtolower($txt);
-                    if (isset($legendMap[$key])) {
-                        continue;
-                    }
-
-                    $legendMap[$key] = [
-                        'label' => sprintf('%s: %s', ucfirst($propLabel), $txt),
-                        'color' => $color ?: '#6699ff',
-                    ];
                 }
+                if ($firstText === '') {
+                    return;
+                }
+
+                $key = 'pv:' . $term . ':' . mb_strtolower($firstText);
+                if (isset($legendMap[$key])) {
+                    return;
+                }
+
+                $legendMap[$key] = [
+                    'label' => sprintf('%s: %s', ucfirst($propLabel), $firstText),
+                    'color' => $color ?? $this->getAutoColor($key),
+                ];
             }
         }
+    }
+
+    private function getAutoColor(string $key): string
+    {
+        static $palette = [
+            '#ff7f0e',
+            '#d62728',
+            '#9467bd',
+            '#8c564b',
+            '#e377c2',
+            '#271919ff',
+            '#bcbd22',
+            '#17becf',
+            '#393b79',
+            '#637939',
+            '#7b4173',
+            '#3182bd',
+            '#31a354',
+            '#756bb1',
+            '#636363',
+            '#969696',
+            '#bcbddc',
+            '#c7e9c0',
+        ];
+
+        $hash  = crc32($key);
+        $index = $hash % count($palette);
+        return $palette[$index];
     }
 }
