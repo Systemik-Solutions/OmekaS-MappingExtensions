@@ -268,10 +268,10 @@ class IndexController extends AbstractActionController
                     $featureArray,
                     $color,
                 ];
-            }
 
-            // update legend from linked item
-            $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
+                // update legend from linked item
+                $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
+            }
         }
 
         uasort($legendMap, function ($a, $b) {
@@ -812,20 +812,34 @@ class IndexController extends AbstractActionController
             '#d62728',
             '#9467bd',
             '#8c564b',
-            '#e377c2',
             '#271919ff',
             '#bcbd22',
             '#17becf',
             '#393b79',
             '#637939',
-            '#7b4173',
             '#3182bd',
             '#31a354',
-            '#756bb1',
-            '#636363',
+            '#ef08ffff',
             '#969696',
             '#bcbddc',
             '#c7e9c0',
+            '#9e9ac8',
+            '#fdd0a2',
+            '#a1d99b',
+            '#bdbdbd',
+            '#140c6aff',
+            '#fdae6b',
+            '#74c476',
+            '#981442ff',
+            '#6baed6',
+            '#88b199ff',
+            '#252525',
+            '#3182bd',
+            '#636363',
+            '#0de6d0ff',
+            '#1f3e29ff',
+            '#7c158aff',
+            '#316987ff',
         ];
 
         $hash  = crc32($key);
