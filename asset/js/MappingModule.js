@@ -182,15 +182,103 @@ const MappingModule = {
             getFeaturesQuery.block_data = JSON.stringify(blockData);
         }
 
+        // helper to build/update legend from AJAX data (NEW)
+        function updateLegendFromAjax(legendEntries) {
+            if (!legendEntries || !legendEntries.length) return;
+    
+            // Find the closest mapping-block for THIS map only
+            const mapContainer = map._container;
+            if (!mapContainer) return;
+
+            const container =
+                mapContainer.closest(".mapping-block") || mapContainer.parentNode;
+            if (!container) return;
+
+            let el = container.querySelector(".mapping-legend");
+            if (!el) {
+                el = document.createElement("div");
+                el.className = "mapping-legend";
+                el.style.position = "absolute";
+                el.style.left = "10px";
+                el.style.bottom = "10px";
+                el.style.zIndex = "1000";
+                el.style.background = "#fff";
+                el.style.border = "1px solid rgba(0,0,0,.15)";
+                el.style.padding = "8px 10px";
+                el.style.maxWidth = "240px";
+                el.style.lineHeight = "1.3";
+                el.style.boxShadow = "0 1px 10px rgba(0,0,0,0.4)";
+                el.style.borderRadius = "10px";
+                el.style.fontSize = "17px";
+                container.appendChild(el);
+            }
+
+            const esc = (s) =>
+                String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;");
+
+            let html = '<div style="font-weight:600;margin-bottom:6px;"></div>';
+
+            legendEntries.forEach(({ label, color }) => {
+                const pinSvg =
+                    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 27" width="18" height="18" style="display:block;">' +
+                    '<path fill="' + esc(color || "#6699ff") + '" stroke="#333" stroke-width="1.2" d="M12 1.8C8.5 1.8 5.5 5 5.5 9c0 4.8 6.5 14.5 6.5 14.5S18.5 13.8 18.5 9c0-4-3-7.2-6.5-7.2z"/>' +
+                    '<circle cx="12" cy="9" r="2.8" fill="white"/>' +
+                    "</svg>";
+
+                html +=
+                    '<div class="legend-row" style="display:flex;align-items:center;gap:8px;margin:4px 0;">' +
+                    '<span class="legend-icon" aria-hidden="true" style="width:18px;height:18px;display:inline-block;">' +
+                    pinSvg +
+                    "</span>" +
+                    '<span class="legend-label" style="flex:1 1 auto;">' +
+                    esc(label) +
+                    "</span>" +
+                    "</div>";
+            });
+
+            el.innerHTML = html;
+        }
+
         // Get features from the server, one page at a time.
         $.get(getFeaturesUrl, getFeaturesQuery).done(function (featuresData) {
-            if (!featuresData.length) {
+            // ---- NEW: support object {features, legend} and old plain array ----
+            let featuresArray = [];
+            let legendEntries = [];
+
+            if (Array.isArray(featuresData)) {
+                // backward-compatible: old response = array of features
+                featuresArray = featuresData;
+            } else if (featuresData && typeof featuresData === "object") {
+                featuresArray = Array.isArray(featuresData.features)
+                    ? featuresData.features
+                    : [];
+                legendEntries = Array.isArray(featuresData.legend)
+                    ? featuresData.legend
+                    : [];
+            }
+
+            if (!featuresArray.length) {
                 // This page returned no features. Stop recursion.
+                // Also, if legend came only on last page, update once here
+                if (legendEntries.length) {
+                    updateLegendFromAjax(legendEntries);
+                }
                 onFeaturesLoad();
                 return;
             }
+
+            // If legend is provided on this page, update now (latest wins)
+            if (legendEntries.length) {
+                updateLegendFromAjax(legendEntries);
+            }
+
             // Iterate the features.
-            featuresData.forEach((featureData) => {
+            featuresArray.forEach((featureData) => {
                 const featureId = featureData[0];
                 const resourceId = featureData[1];
                 const featureGeography = featureData[2];

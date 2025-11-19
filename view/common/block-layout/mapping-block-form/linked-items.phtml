@@ -8,8 +8,6 @@ $services = $this->getHelperPluginManager()->getServiceLocator();
 $formElementManager = $services->get('FormElementManager');
 $view = $this;
 
-error_log(json_encode($data));
-
 
 // 1) Checkbox — "Map linked items instead" (unchecked by default)
 $mapLinkedItems = new \Laminas\Form\Element\Checkbox('o:block[__blockIndex__][o:data][map_linked_items]');
