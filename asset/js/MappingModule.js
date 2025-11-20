@@ -210,6 +210,8 @@ const MappingModule = {
                 el.style.boxShadow = "0 1px 10px rgba(0,0,0,0.4)";
                 el.style.borderRadius = "10px";
                 el.style.fontSize = "17px";
+                el.style.maxHeight = "330px";
+                el.style.overflow = "auto";
                 container.appendChild(el);
             }
 
