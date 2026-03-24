@@ -1,9 +1,9 @@
 <?php
 
-namespace Mapping\Site\BlockLayout;
+namespace MappingExtensions\Site\BlockLayout;
 
 use Laminas\View\Renderer\PhpRenderer;
-use Mapping\Form\BlockLayoutMapJourneyForm;
+use MappingExtensions\Form\BlockLayoutMapJourneyForm;
 use Omeka\Api\Representation\SiteRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
 use Omeka\Api\Representation\SitePageBlockRepresentation;

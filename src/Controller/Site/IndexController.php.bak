@@ -3,39 +3,11 @@
 namespace MappingExtensions\Controller\Site;
 
 use Laminas\Mvc\Controller\AbstractActionController;
-use Laminas\View\Model\JsonModel;
-use Laminas\View\Model\ViewModel;
 use Omeka\Api\Representation\ItemRepresentation;
-use Omeka\Api\Representation\ValueRepresentation;
+use Laminas\View\Model\ViewModel;
 
-/**
- * Site-facing controller for browsing and retrieving mapping features.
- *
- * Handles map browse pages, feature retrieval (default, linked-items,
- * and journey modes), and popup content rendering.
- */
 class IndexController extends AbstractActionController
 {
-    /** @var int Maximum items returned in a broad search. */
-    private const ITEMS_LIMIT = 100000;
-
-    /** @var int Maximum features per page. */
-    private const FEATURES_PER_PAGE = 10000;
-
-    /** @var int Maximum linked/inverse items per query. */
-    private const LINKED_ITEMS_LIMIT = 1000;
-
-    /** @var string Fallback color when no grouping color is configured. */
-    private const DEFAULT_COLOR = '#6699ff';
-
-    /** @var int Default stroke width for journey polylines. */
-    private const JOURNEY_STROKE_WIDTH = 6;
-
-    /**
-     * Browse action: renders the map browse page with query parameters.
-     *
-     * @return ViewModel
-     */
     public function browseAction()
     {
         $itemsQuery = $this->params()->fromQuery();
@@ -55,20 +27,13 @@ class IndexController extends AbstractActionController
             'radius_unit' => $this->params()->fromQuery('mapping_radius_unit'),
         ];
 
-        $view = new ViewModel();
+        $view = new ViewModel;
         $view->setVariable('query', $this->params()->fromQuery());
         $view->setVariable('itemsQuery', $itemsQuery);
         $view->setVariable('featuresQuery', $featuresQuery);
         return $view;
     }
 
-    /**
-     * Retrieve map features as JSON for the current site.
-     *
-     * Delegates to journey or linked-items mode when applicable.
-     *
-     * @return JsonModel
-     */
     public function getFeaturesAction()
     {
         // --- Parse incoming queries ---
@@ -79,44 +44,49 @@ class IndexController extends AbstractActionController
         // --- Scope originals ---
         $itemsQuery['site_id']      = $this->currentSite()->id();
         $itemsQuery['has_features'] = true;
-        $itemsQuery['limit']        = self::ITEMS_LIMIT;
+        $itemsQuery['limit']        = 100000;
 
-        $api = $this->api();
+        $api     = $this->api();
 
         $featuresPage = (int) $this->params()->fromQuery('features_page', 1);
-        if (!empty($blockData['journey'])
-            && ($blockData['journey']['property'])
-            && $blockData['journey']['property'] !== ''
-        ) {
-            return $this->getFeatureActionForJourneyItems(
-                $blockData, $api, $itemsQuery, $featuresPage
-            );
+        if (!empty($blockData['journey']) && ($blockData['journey']['property']) && $blockData['journey']['property'] != '') {
+            return $this->getFeatureActionforJourneyItems($blockData, $api, $itemsQuery, $featuresPage);
         }
 
         // Original items (geo-located candidates)
         $itemIds = $api->search('items', $itemsQuery, ['returnScalar' => 'id'])->getContent();
 
         if (!empty($blockData['map_linked_items']) && $itemIds) {
-            return $this->getFeaturesActionForLinkedItems(
-                $itemIds, $blockData, $api, $itemsQuery, $featuresQuery
-            );
+            return $this->getFeaturesActionForLinkedItems($itemIds, $blockData, $api, $itemsQuery, $featuresQuery);
         }
 
         // --- Default behavior (no linked-items mode): use items' own geometry ---
         $featuresQuery['page']     = (int) $this->params()->fromQuery('features_page', 1);
-        $featuresQuery['per_page'] = self::FEATURES_PER_PAGE;
+        $featuresQuery['per_page'] = 10000;
         $featuresQuery['item_id']  = $itemIds ?: 0;
 
         $featureResponse = $api->search('mapping_features', $featuresQuery);
 
-        $features  = [];
-        $legendMap = [];
+        $features = [];
+        $legendMap  = [];
 
         foreach ($featureResponse->getContent() as $feature) {
             $displayItem = $feature->item();
             $color       = $this->getItemColor($displayItem, $blockData, $api);
-            $geo         = $feature->geography();
-            $featureArray = $this->buildFeatureArray($geo, $displayItem->displayTitle());
+            $geo = $feature->geography();
+
+            if ($geo->getType() == 'Point' && method_exists($geo, 'getLongitude') && method_exists($geo, 'getLatitude')) {
+                $featureArray = [
+                    'type'        => 'Point',
+                    'coordinates' => [$geo->getLongitude(), $geo->getLatitude()],
+                    'srid'        => method_exists($geo, 'getSrid') ? $geo->getSrid() : null,
+                    'properties'  => [
+                        'title' => $displayItem->displayTitle(),
+                    ],
+                ];
+            } else {
+                $featureArray = $geo;
+            }
 
             $features[] = [
                 $feature->id(),
@@ -125,37 +95,44 @@ class IndexController extends AbstractActionController
                 $color,
             ];
 
+            // Update legend map
             $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
         }
 
-        return $this->buildFeaturesJsonResponse($features, $legendMap);
+        uasort($legendMap, function ($a, $b) {
+            return strcasecmp($a['label'], $b['label']);
+        });
+        $legendEntries = array_values($legendMap);
+
+        return new \Laminas\View\Model\JsonModel([
+            'features' => $features,
+            'legend'   => $legendEntries,
+        ]);
     }
 
-    /**
-     * Linked-items mode: show linked items using originals' geography.
-     *
-     * @param int[]  $originalItemIds IDs of geo-located original items
-     * @param array  $blockData       Block configuration data
-     * @param mixed  $api             Omeka API manager
-     * @param array  $itemsQuery      Base items query
-     * @param array  $featuresQuery   Base features query
-     * @return JsonModel
-     */
-    private function getFeaturesActionForLinkedItems(
-        $originalItemIds,
-        $blockData,
-        $api,
-        $itemsQuery,
-        $featuresQuery
-    ) {
-        $itemCache     = [];
+    // --- Linked-items mode: show linked items using ORIGINALS' geography ---
+    private function getFeaturesActionForLinkedItems($originalItemIds, $blockData, $api, $itemsQuery, $featuresQuery)
+    {
+        $itemCache = [];
         $propIdCache   = [];
 
-        $linkedPropsTerms = null;
+        // get specific linked properties, if null then use all possible relationships
+        $linkedPropsTerms = null; // null means: any property
         if (array_key_exists('linked_properties', $blockData)) {
-            $linkedPropsTerms = $this->parseLinkedProperties(
-                $blockData['linked_properties']
-            );
+            $raw = $blockData['linked_properties'];
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded) && $decoded) {
+                    $linkedPropsTerms = array_values(array_filter(array_map('strval', $decoded)));
+                } else {
+                    $csv = array_values(array_filter(array_map('trim', explode(',', $raw))));
+                    if ($csv) {
+                        $linkedPropsTerms = array_values(array_filter(array_map('strval', $csv)));
+                    }
+                }
+            } elseif (is_array($raw) && $raw) {
+                $linkedPropsTerms = array_values(array_filter(array_map('strval', $raw)));
+            }
         }
 
         // For each ORIGINAL item, collect LINKED item ids
@@ -164,10 +141,7 @@ class IndexController extends AbstractActionController
         foreach ($originalItemIds as $originalItemId) {
             try {
                 $origItem = $this->getItemById($originalItemId, $api, $itemCache);
-            } catch (\Exception $e) {
-                $this->logger()->warn(
-                    sprintf('Failed to load item %d: %s', $originalItemId, $e->getMessage())
-                );
+            } catch (\Throwable $e) {
                 continue;
             }
 
@@ -175,21 +149,14 @@ class IndexController extends AbstractActionController
 
             // -------- Outgoing links: original -> linked --------
             foreach ($origItem->values() as $term => $propData) {
-                if (is_array($linkedPropsTerms)
-                    && !in_array($term, $linkedPropsTerms)
-                ) {
+                if (is_array($linkedPropsTerms) && !in_array($term, $linkedPropsTerms)) {
                     continue;
                 }
 
                 $values = [];
                 if (is_array($propData) && array_key_exists('values', $propData)) {
-                    $values = is_array($propData['values'])
-                        ? $propData['values']
-                        : [];
-                } elseif (is_array($propData)
-                    && isset($propData[0])
-                    && $propData[0] instanceof ValueRepresentation
-                ) {
+                    $values = is_array($propData['values']) ? $propData['values'] : [];
+                } elseif (is_array($propData) && isset($propData[0]) && $propData[0] instanceof \Omeka\Api\Representation\ValueRepresentation) {
                     $values = $propData;
                 } else {
                     continue;
@@ -212,13 +179,11 @@ class IndexController extends AbstractActionController
             if (is_array($linkedPropsTerms) && $linkedPropsTerms) {
                 foreach ($linkedPropsTerms as $term) {
                     $propId = $this->getPropertyID($term, $api, $propIdCache);
-                    if (!$propId) {
-                        continue;
-                    }
+                    if (!$propId) continue;
 
                     $invQuery = [
                         'site_id'  => $itemsQuery['site_id'],
-                        'limit'    => self::LINKED_ITEMS_LIMIT,
+                        'limit'    => 1000,
                         'property' => [[
                             'joiner'   => 'and',
                             'property' => $propId,
@@ -227,56 +192,48 @@ class IndexController extends AbstractActionController
                         ]],
                     ];
                     try {
-                        $invIds = $api->search(
-                            'items', $invQuery, ['returnScalar' => 'id']
-                        )->getContent();
+                        $invIds = $api->search('items', $invQuery, ['returnScalar' => 'id'])->getContent();
                         foreach ($invIds as $lid) {
                             $originalToLinked[$originalItemId][$lid] = true;
                         }
-                    } catch (\Exception $e) {
-                        $this->logger()->warn(
-                            sprintf('Inverse link lookup failed for property %s: %s', $term, $e->getMessage())
-                        );
+                    } catch (\Throwable $e) {
+                        // ignore per-property failures
                     }
                 }
-            } elseif ($linkedPropsTerms === null) {
-                // No property filter: use all possible relations
+            } else if ($linkedPropsTerms === null) {
+                // If NO property filter , use all possible relations 
                 $invAnyQuery = [
                     'site_id'  => $itemsQuery['site_id'],
-                    'limit'    => self::LINKED_ITEMS_LIMIT,
+                    'limit'    => 1000,
                     'property' => [[
                         'joiner'   => 'and',
                         'property' => '',
                         'type'     => 'res',
                         'text'     => (string) $originalItemId,
                     ]],
-                    'is_public' => 1,
+                    'is_public' => 1, // Only use public data
                 ];
                 try {
-                    $invAnyIds = $api->search(
-                        'items', $invAnyQuery, ['returnScalar' => 'id']
-                    )->getContent();
+                    $invAnyIds = $api->search('items', $invAnyQuery, ['returnScalar' => 'id'])->getContent();
 
                     foreach ($invAnyIds as $lid) {
                         $originalToLinked[$originalItemId][$lid] = true;
                     }
-                } catch (\Exception $e) {
-                    $this->logger()->warn(
-                        sprintf('Inverse link lookup failed for item %d: %s', $originalItemId, $e->getMessage())
-                    );
+                } catch (\Throwable $e) {
+                    // ignore
                 }
             }
         }
 
-        // --- Fetch mapping_features for ORIGINALS only ---
+        // --- Fetch mapping_features for ORIGINALS only (to check geography) ---
         $featuresQuery['page']     = (int) $this->params()->fromQuery('features_page', 1);
-        $featuresQuery['per_page'] = self::FEATURES_PER_PAGE;
+        $featuresQuery['per_page'] = 10000;
         $featuresQuery['item_id']  = $originalItemIds ?: 0;
 
         $featureResponse = $api->search('mapping_features', $featuresQuery);
 
-        $features  = [];
-        $legendMap = [];
+        $features = [];
+        $legendMap  = [];
 
         foreach ($featureResponse->getContent() as $feature) {
 
@@ -285,12 +242,25 @@ class IndexController extends AbstractActionController
                 continue;
             }
 
-            // For each linked item, emit a feature row
+            // For each linked item, emit a "feature row":
             foreach (array_keys($originalToLinked[$origItemId]) as $linkedId) {
-                $displayItem  = $this->getItemById($linkedId, $api, $itemCache);
-                $color        = $this->getItemColor($displayItem, $blockData, $api);
-                $geo          = $feature->geography();
-                $featureArray = $this->buildFeatureArray($geo, $displayItem->displayTitle());
+                $displayItem = $this->getItemById($linkedId, $api, $itemCache);
+                $color       = $this->getItemColor($displayItem, $blockData, $api);
+
+                $geo = $feature->geography();
+
+                if ($geo->getType() == 'Point' && method_exists($geo, 'getLongitude') && method_exists($geo, 'getLatitude')) {
+                    $featureArray = [
+                        'type'        => 'Point',
+                        'coordinates' => [$geo->getLongitude(), $geo->getLatitude()],
+                        'srid'        => method_exists($geo, 'getSrid') ? $geo->getSrid() : null,
+                        'properties'  => [
+                            'title' => $displayItem->displayTitle(),
+                        ],
+                    ];
+                } else {
+                    $featureArray = $geo;
+                }
 
                 $features[] = [
                     $feature->id(),
@@ -299,121 +269,107 @@ class IndexController extends AbstractActionController
                     $color,
                 ];
 
+                // update legend from linked item
                 $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
             }
         }
 
-        return $this->buildFeaturesJsonResponse($features, $legendMap);
+        uasort($legendMap, function ($a, $b) {
+            return strcasecmp($a['label'], $b['label']);
+        });
+        $legendEntries = array_values($legendMap);
+
+        return new \Laminas\View\Model\JsonModel([
+            'features' => $features,
+            'legend'   => $legendEntries,
+        ]);
     }
 
-    /**
-     * Journey mode: build features from journey property on original items.
-     *
-     * @param array $blockData    Block configuration data
-     * @param mixed $api          Omeka API manager
-     * @param array $itemsQuery   Base items query
-     * @param int   $featuresPage Current features page
-     * @return JsonModel
-     */
-    private function getFeatureActionForJourneyItems(
-        $blockData,
-        $api,
-        $itemsQuery,
-        $featuresPage
-    ) {
+    // --- Journey mode: build features from journey property on ORIGINAL items ---
+    private function getFeatureActionforJourneyItems($blockData, $api, $itemsQuery, $featuresPage)
+    {
         if ($featuresPage > 1) {
-            return new JsonModel([]);
+            return new \Laminas\View\Model\JsonModel([]);
         }
 
         $journeyTerm = (string) ($blockData['journey']['property'] ?? '');
 
+        // We dont need geography of the original items
         unset($itemsQuery['geo']);
-        $itemsQuery['has_features'] = false;
+        $itemsQuery['has_features']  = false;
 
         $originalItems = $api->search('items', $itemsQuery)->getContent();
 
-        $features  = [];
-        $legendMap = [];
+        //For each original item, collect referenced (ordered) resource items from the journey property
+        $features = [];
+        $legendMap  = [];
 
         foreach ($originalItems as $originalItem) {
 
-            $originalItemJourneyValues = $originalItem->value(
-                $journeyTerm, ['all' => true]
-            ) ?: [];
+            $originalItemJourneyValues = $originalItem->value($journeyTerm, ['all' => true]) ?: [];
             if (!$originalItemJourneyValues) {
-                continue;
+                continue; // no journey, skip
             }
 
             if (count($originalItemJourneyValues) <= 1) {
-                continue;
+                continue; // no valid journey , skip
             }
 
+            // Collect ordered points for the polyline
             $lineCoords = [];
-            $featureID  = null;
 
+            $featureID = null;
             foreach ($originalItemJourneyValues as $journeyValue) {
 
-                if (!is_object($journeyValue)
-                    || !in_array($journeyValue->type(), ['resource', 'resource:item'], true)
-                ) {
+                // only resource:item values participate
+                if (!is_object($journeyValue) || !in_array($journeyValue->type(), ['resource', 'resource:item'], true)) {
                     continue;
                 }
 
                 $journeyPlace = $journeyValue->valueResource();
-                if (!$journeyPlace) {
-                    continue;
-                }
+                if (!$journeyPlace) continue;
 
+                // Fetch mapping_features of the journey place
                 try {
-                    $journeyPlaceMappingFeature = $api->search(
-                        'mapping_features', ['item_id' => $journeyPlace->id()]
-                    );
-                } catch (\Exception $e) {
-                    $this->logger()->warn(sprintf(
-                        'Failed to load mapping features for place %d: %s',
-                        $journeyPlace->id(),
-                        $e->getMessage()
-                    ));
+                    $journeyPlaceMappingFeature = $api->search('mapping_features', ['item_id' => $journeyPlace->id()]);
+                } catch (\Throwable $e) {
                     continue;
                 }
 
                 $journeyPlaceMappingFeatures = $journeyPlaceMappingFeature->getContent();
 
+                // Only use first valid point data if multiple exist
                 foreach ($journeyPlaceMappingFeatures as $journeyPlaceMappingFeature) {
                     $geography = $journeyPlaceMappingFeature->geography();
 
-                    if (isset($geography) && $geography->getType() === 'Point') {
+                    if (isset($geography) && $geography->getType() == 'Point') {
 
-                        $lineCoords[] = [
-                            $geography->getLongitude(),
-                            $geography->getLatitude(),
-                        ];
+                        $lineCoords[] = [$geography->getLongitude(), $geography->getLatitude()];
 
                         $featureID = $journeyPlaceMappingFeature->id();
                         $color = $this->getItemColor($originalItem, $blockData, $api);
 
                         $features[] = [
-                            (int) $journeyPlaceMappingFeature->id(),
-                            (int) $journeyPlace->id(),
-                            $geography,
-                            $color,
+                            (int) $journeyPlaceMappingFeature->id(), // feature_id 
+                            (int) $journeyPlace->id(),              // resource_id 
+                            $geography,                             // geography 
+                            $color,                                 // color
                         ];
 
-                        $this->addLegendForItem(
-                            $legendMap, $originalItem, $color, $blockData, $api
-                        );
+                        $this->addLegendForItem($legendMap, $originalItem, $color, $blockData, $api);
                         break;
                     }
                 }
             }
 
+            // Add a polyline feature for the journey itself
             if (count($lineCoords) >= 2) {
                 $lineFeature = [
                     'type'        => 'LineString',
                     'coordinates' => $lineCoords,
                     'properties'  => [
-                        'title'        => $originalItem->id(),
-                        'stroke-width' => self::JOURNEY_STROKE_WIDTH,
+                        'title' => $originalItem->id(),
+                        'stroke-width' => 6, // custom width
                     ],
                 ];
 
@@ -423,59 +379,59 @@ class IndexController extends AbstractActionController
                     (int) $featureID,
                     (int) $originalItem->id(),
                     $lineFeature,
-                    $color,
+                    $color //color
                 ];
             }
         }
 
-        return $this->buildFeaturesJsonResponse($features, $legendMap);
+        uasort($legendMap, function ($a, $b) {
+            return strcasecmp($a['label'], $b['label']);
+        });
+        $legendEntries = array_values($legendMap);
+
+        return new \Laminas\View\Model\JsonModel([
+            'features' => $features,
+            'legend'   => $legendEntries,
+        ]);
     }
 
 
-    /**
-     * Render the popup content for a single mapping feature.
-     *
-     * @return ViewModel
-     */
     public function getFeaturePopupContentAction()
     {
-        $featureId  = (int) $this->params()->fromQuery('feature_id');
-        $resourceId = (int) $this->params()->fromQuery('resource_id');
-        $feature    = $this->api()->read('mapping_features', $featureId)->getContent();
+        $featureId   = (int) $this->params()->fromQuery('feature_id');
+        $resourceId  = (int) $this->params()->fromQuery('resource_id'); // NEW: linked item id (optional)
+        $feature     = $this->api()->read('mapping_features', $featureId)->getContent();
 
+        // Original geo-located item (With geography)
         $originalItem = $feature->item();
 
+        // Determine which item to show in the popup:
+        // - if resource_id is provided, prefer that linked item;
+        // - otherwise, fall back to the feature's item (original).
         $item = $originalItem;
 
         if ($resourceId) {
             try {
                 $item = $this->api()->read('items', $resourceId)->getContent();
-            } catch (\Exception $e) {
-                $this->logger()->warn(
-                    sprintf('Failed to load linked item %d for popup: %s', $resourceId, $e->getMessage())
-                );
+            } catch (\Throwable $e) {
+                // ignore and keep $item = $originalItem
             }
         }
 
-        $view = new ViewModel();
+        $view = new ViewModel;
         $view->setTerminal(true);
         $view->setTemplate('mapping/site/index/get-feature-popup-content');
         $view->setVariable('feature', $feature);
-        $view->setVariable('item', $item);
-        $view->setVariable('originalItem', $originalItem);
+        $view->setVariable('item', $item);                 // NEW: item to display (linked or original)
+        $view->setVariable('originalItem', $originalItem); // NEW: always provide original (geo-located) item
+
 
         $popupPropsRaw = $this->params()->fromQuery('popup_props', '[]');
         $popupPropsTerms = json_decode($popupPropsRaw, true);
         if (!is_array($popupPropsTerms)) {
-            $popupPropsTerms = array_values(
-                array_filter(array_map('trim', explode(',', (string) $popupPropsRaw)))
-            );
+            // fallback for CSV or single string
+            $popupPropsTerms = array_values(array_filter(array_map('trim', explode(',', (string) $popupPropsRaw))));
         }
-        // Validate terms: only allow strings matching property term format
-        $popupPropsTerms = array_values(array_filter($popupPropsTerms, function ($term) {
-            return is_string($term)
-                && preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*:[a-zA-Z][a-zA-Z0-9_-]*$/', $term);
-        }));
         $view->setVariable('popupPropsTerms', $popupPropsTerms);
 
         $isJourneyMap = (bool) $this->params()->fromQuery('is_journey_map', false);
@@ -484,14 +440,7 @@ class IndexController extends AbstractActionController
         return $view;
     }
 
-    /**
-     * Retrieve an item by ID, using an in-memory cache.
-     *
-     * @param int        $id        Item ID
-     * @param mixed      $api       Omeka API manager
-     * @param array|null $itemCache Reference to item cache
-     * @return ItemRepresentation|null
-     */
+    // Get a item content by its id
     private function getItemById($id, $api, &$itemCache = null)
     {
         if (isset($itemCache[$id])) {
@@ -501,22 +450,12 @@ class IndexController extends AbstractActionController
             $item = $api->read('items', $id)->getContent();
             $itemCache[$id] = $item;
             return $item;
-        } catch (\Exception $e) {
-            $this->logger()->debug(
-                sprintf('Could not load item %d: %s', $id, $e->getMessage())
-            );
+        } catch (\Throwable $e) {
             return null;
         }
     }
 
-    /**
-     * Resolve a property term (e.g. "dcterms:title") to its numeric ID.
-     *
-     * @param string     $term         Property term
-     * @param mixed      $api          Omeka API manager
-     * @param array|null $propIdCache  Reference to property ID cache
-     * @return int|null
-     */
+    // Get a property id by its term name
     private function getPropertyID($term, $api, &$propIdCache = null)
     {
         if (isset($propIdCache[$term])) {
@@ -528,24 +467,14 @@ class IndexController extends AbstractActionController
                 $propIdCache[$term] = (int) $prop->id();
                 return $propIdCache[$term];
             }
-        } catch (\Exception $e) {
-            $this->logger()->debug(
-                sprintf('Could not resolve property term "%s": %s', $term, $e->getMessage())
-            );
+        } catch (\Throwable $e) {
         }
         $propIdCache[$term] = null;
         return null;
     }
 
-    /**
-     * Determine item color based on grouping mode and color configuration.
-     *
-     * @param ItemRepresentation|null $item      The item to color
-     * @param array                   $blockData Block configuration data
-     * @param mixed                   $api       Omeka API manager
-     * @return string|null Hex color string or null
-     */
-    private function getItemColor($item, $blockData, $api)
+    // Determine item color based on grouping mode and color rows
+    private function getItemColor($item,  $blockData, $api)
     {
         if (!$item) {
             return null;
@@ -570,6 +499,7 @@ class IndexController extends AbstractActionController
             $hasConfiguredRow = false;
 
             foreach ($colorRows as $row) {
+                // skip rows with no class set (these are effectively "empty" rows)
                 if (empty($row['resource_class'])) {
                     continue;
                 }
@@ -580,6 +510,7 @@ class IndexController extends AbstractActionController
                 }
             }
 
+            // color set , return default color
             if (!$hasConfiguredRow) {
                 return $this->getAutoColor('rc:' . $rcId);
             }
@@ -608,6 +539,7 @@ class IndexController extends AbstractActionController
                 }
             }
 
+            // No color set , return default color
             if (!$hasConfiguredRow) {
                 return $this->getAutoColor('rt:' . $rtId);
             }
@@ -622,16 +554,18 @@ class IndexController extends AbstractActionController
                 return null;
             }
 
+            // Resolve property id (if possible) for matching configured rows
             $propIdForTerm = null;
             try {
                 $propRep = $api->searchOne('properties', ['term' => $term])->getContent();
                 if ($propRep) {
                     $propIdForTerm = (int) $propRep->id();
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $propIdForTerm = null;
             }
 
+            // Collect this item's values for the chosen term
             $vals = $item->value($term, ['all' => true]) ?: [];
             if (!$vals) {
                 return null;
@@ -642,12 +576,14 @@ class IndexController extends AbstractActionController
                 $itemTexts[] = trim((string) ($v->value() ?? (string) $v));
             }
 
+            // Try to match against configured rows (if any)
             $hasConfiguredRow = false;
 
             foreach ($colorRows as $row) {
                 $rowPropId = isset($row['property_value']) ? (int) $row['property_value'] : 0;
                 $needle    = trim((string) ($row['property_text'] ?? ''));
 
+                // skip rows that don't target this property or have no text
                 if ($needle === '') {
                     continue;
                 }
@@ -664,13 +600,14 @@ class IndexController extends AbstractActionController
                 }
             }
 
+            // If no valid rows configured for this property,
             if (!$hasConfiguredRow) {
                 if (!empty($itemTexts)) {
                     $first   = mb_strtolower($itemTexts[0]);
                     $autoKey = 'pv:' . $term . ':' . $first;
                     return $this->getAutoColor($autoKey);
                 }
-                return self::DEFAULT_COLOR;
+                return '#6699ff';
             }
 
             return null;
@@ -678,22 +615,9 @@ class IndexController extends AbstractActionController
         return null;
     }
 
-    /**
-     * Build or update legend entries for a given item and color.
-     *
-     * @param array                   $legendMap Reference to legend entries map
-     * @param ItemRepresentation|null $item      The item to add to legend
-     * @param string|null             $color     Hex color string
-     * @param array                   $blockData Block configuration data
-     * @param mixed                   $api       Omeka API manager
-     */
-    private function addLegendForItem(
-        array &$legendMap,
-        $item,
-        ?string $color,
-        array $blockData,
-        $api
-    ): void {
+    // Build / update legend entries for a given item and color
+    private function addLegendForItem(array &$legendMap, $item, ?string $color, array $blockData, $api): void
+    {
         if (!$item) {
             return;
         }
@@ -715,6 +639,7 @@ class IndexController extends AbstractActionController
             $rcId = (int) $rc->id();
             $key  = 'rc:' . $rcId;
 
+            // Check whether ANY row is configured for resource_class
             $hasConfiguredRow = false;
             foreach ($colorRows as $row) {
                 if (!empty($row['resource_class'])) {
@@ -723,6 +648,9 @@ class IndexController extends AbstractActionController
                 }
             }
 
+            // If there are configured rows but THIS item got no color
+            // (getItemColor returned null), then this class is not user-configured
+            // => skip it in the legend.
             if ($hasConfiguredRow && $color === null) {
                 return;
             }
@@ -748,6 +676,7 @@ class IndexController extends AbstractActionController
             $rtId = (int) $rt->id();
             $key  = 'rt:' . $rtId;
 
+            // Check whether ANY row is configured for resource_template
             $hasConfiguredRow = false;
             foreach ($colorRows as $row) {
                 if (!empty($row['resource_template'])) {
@@ -756,6 +685,8 @@ class IndexController extends AbstractActionController
                 }
             }
 
+            // If there are configured rows but THIS item got no color
+            // => skip it in the legend.
             if ($hasConfiguredRow && $color === null) {
                 return;
             }
@@ -779,21 +710,29 @@ class IndexController extends AbstractActionController
                 return;
             }
 
-            // Resolve property label and ID in a single API call
-            $propLabel     = $term;
-            $propIdForTerm = null;
+            // Try to resolve property label from term
+            $propLabel = $term;
             try {
                 $prop = $api->searchOne('properties', ['term' => $term])->getContent();
                 if ($prop) {
-                    $propLabel     = $prop->label();
-                    $propIdForTerm = (int) $prop->id();
+                    $propLabel = $prop->label();
                 }
-            } catch (\Exception $e) {
-                $this->logger()->debug(
-                    sprintf('Could not resolve property "%s" for legend: %s', $term, $e->getMessage())
-                );
+            } catch (\Throwable $e) {
+                // fall back to term
             }
 
+            // Resolve property id (if possible) for matching configured rows
+            $propIdForTerm = null;
+            try {
+                $propRep = $api->searchOne('properties', ['term' => $term])->getContent();
+                if ($propRep) {
+                    $propIdForTerm = (int) $propRep->id();
+                }
+            } catch (\Throwable $e) {
+                $propIdForTerm = null;
+            }
+
+            // Detect if there is at least one *valid* configured row
             $hasConfiguredRow = false;
             foreach ($colorRows as $row) {
                 $rowPropId = isset($row['property_value']) ? (int) $row['property_value'] : 0;
@@ -811,6 +750,7 @@ class IndexController extends AbstractActionController
             }
 
             if ($hasConfiguredRow) {
+                // Use *configured* rows as legend entries (like before)
                 foreach ($colorRows as $row) {
                     $textLabel = trim((string) ($row['property_text'] ?? ''));
                     if ($textLabel === '') {
@@ -822,7 +762,7 @@ class IndexController extends AbstractActionController
                         continue;
                     }
 
-                    $rowColor = $row['color'] ?? $color ?? self::DEFAULT_COLOR;
+                    $rowColor = $row['color'] ?? $color ?? '#6699ff';
                     $key      = 'pv:' . $term . ':' . mb_strtolower($textLabel);
 
                     if (isset($legendMap[$key])) {
@@ -835,6 +775,8 @@ class IndexController extends AbstractActionController
                     ];
                 }
             } else {
+                // NO valid rows configured: treat as "default" grouping.
+                // Build ONE legend entry based on the FIRST value, same as getItemColor().
                 $vals = $item->value($term, ['all' => true]) ?: [];
                 if (!$vals) {
                     return;
@@ -864,12 +806,6 @@ class IndexController extends AbstractActionController
         }
     }
 
-    /**
-     * Deterministically assign a color from a fixed palette based on a key.
-     *
-     * @param string $key Grouping key used to select a palette color
-     * @return string Hex color string
-     */
     private function getAutoColor(string $key): string
     {
         static $palette = [
@@ -908,78 +844,7 @@ class IndexController extends AbstractActionController
         ];
 
         $hash  = crc32($key);
-        $index = abs($hash) % count($palette);
+        $index = $hash % count($palette);
         return $palette[$index];
-    }
-
-    /**
-     * Convert a geography object into a feature array suitable for JSON output.
-     *
-     * @param mixed  $geo   Geography object from a mapping feature
-     * @param string $title Display title for Point features
-     * @return array|mixed Feature array or raw geography object
-     */
-    private function buildFeatureArray($geo, string $title = '')
-    {
-        if ($geo->getType() === 'Point'
-            && method_exists($geo, 'getLongitude')
-            && method_exists($geo, 'getLatitude')
-        ) {
-            return [
-                'type'        => 'Point',
-                'coordinates' => [$geo->getLongitude(), $geo->getLatitude()],
-                'srid'        => method_exists($geo, 'getSrid') ? $geo->getSrid() : null,
-                'properties'  => [
-                    'title' => $title,
-                ],
-            ];
-        }
-        return $geo;
-    }
-
-    /**
-     * Sort the legend map and return a JsonModel with features and legend.
-     *
-     * @param array $features  Feature rows
-     * @param array $legendMap Legend entries keyed by grouping key
-     * @return JsonModel
-     */
-    private function buildFeaturesJsonResponse(array $features, array $legendMap): JsonModel
-    {
-        uasort($legendMap, function ($a, $b) {
-            return strcasecmp($a['label'], $b['label']);
-        });
-        $legendEntries = array_values($legendMap);
-
-        return new JsonModel([
-            'features' => $features,
-            'legend'   => $legendEntries,
-        ]);
-    }
-
-    /**
-     * Parse linked_properties block data into an array of property terms.
-     *
-     * Accepts JSON-encoded arrays, CSV strings, or plain arrays.
-     * Returns null if the input is empty (meaning "any property").
-     *
-     * @param mixed $raw Raw linked_properties value from block data
-     * @return string[]|null Array of property term strings, or null
-     */
-    private function parseLinkedProperties($raw): ?array
-    {
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            if (is_array($decoded) && $decoded) {
-                return array_values(array_filter(array_map('strval', $decoded)));
-            }
-            $csv = array_values(array_filter(array_map('trim', explode(',', $raw))));
-            if ($csv) {
-                return array_values(array_filter(array_map('strval', $csv)));
-            }
-        } elseif (is_array($raw) && $raw) {
-            return array_values(array_filter(array_map('strval', $raw)));
-        }
-        return null;
     }
 }

@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Form\Element;
+namespace MappingExtensions\Form\Element;
 
 use Omeka\Form\Element\PropertySelect;
 use Laminas\Form\Element;

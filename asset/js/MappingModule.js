@@ -43,7 +43,7 @@ const MappingModule = {
 
             let rowsHtml = "";
             clusterMarkers.forEach((marker, idx) => {
-                const title = marker.feature.geometry.properties.title || "No title";
+                const title = marker.feature.geometry.properties ? marker.feature.geometry.properties.title : "No title";
                 rowsHtml += `
                     <tr>
                     <td><a href="#" class="cluster-jump" data-marker-index="${idx}">${title}</a></td>

@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\StaticSiteExport\NavigationLink;
+namespace MappingExtensions\StaticSiteExport\NavigationLink;
 
 use ArrayObject;
 use Omeka\Job\JobInterface;

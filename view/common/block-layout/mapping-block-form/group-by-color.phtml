@@ -20,7 +20,7 @@ $colorsFs->setName('o:block[__blockIndex__][o:data][node_colors]');
 
 $rows = $colorsFs->get('rows');
 $rows->setFormFactory($factory);
-$rows->setTargetElement($formElementManager->get(\Mapping\Form\Fieldset\NodeColorPairFieldset::class));
+$rows->setTargetElement($formElementManager->get(\MappingExtensions\Form\Fieldset\NodeColorPairFieldset::class));
 
 $form->prepare();
 ?>

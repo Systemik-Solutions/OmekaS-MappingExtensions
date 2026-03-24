@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Controller\Admin;
+namespace MappingExtensions\Controller\Admin;
 
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
@@ -39,6 +39,7 @@ class IndexController extends AbstractActionController
 
         $view = new ViewModel;
         $view->setTerminal(true);
+        $view->setTemplate('mapping/admin/index/get-feature-popup-content');
         $view->setVariable('feature', $feature);
         return $view;
     }

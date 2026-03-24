@@ -1,10 +1,10 @@
 <?php
-namespace mapping\Service\Delegator;
+namespace MappingExtensions\Service\Delegator;
 
 use Interop\Container\ContainerInterface;
 use Laminas\ServiceManager\Factory\DelegatorFactoryInterface;
-use Mapping\Form\Element\CopyCoordinates;
-use Mapping\Form\Element\UpdateFeatures;
+use MappingExtensions\Form\Element\CopyCoordinates;
+use MappingExtensions\Form\Element\UpdateFeatures;
 
 class FormElementDelegatorFactory implements DelegatorFactoryInterface
 {

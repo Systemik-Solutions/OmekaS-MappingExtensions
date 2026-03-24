@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Api\Representation;
+namespace MappingExtensions\Api\Representation;
 
 use Omeka\Api\Representation\AbstractEntityRepresentation;
 

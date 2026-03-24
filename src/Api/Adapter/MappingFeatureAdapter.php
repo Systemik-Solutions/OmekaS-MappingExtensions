@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Api\Adapter;
+namespace MappingExtensions\Api\Adapter;
 
 use Doctrine\ORM\QueryBuilder;
 use LongitudeOne\Spatial\Exception\InvalidValueException;
@@ -19,12 +19,12 @@ class MappingFeatureAdapter extends AbstractEntityAdapter
 
     public function getRepresentationClass()
     {
-        return 'Mapping\Api\Representation\MappingFeatureRepresentation';
+        return 'MappingExtensions\Api\Representation\MappingFeatureRepresentation';
     }
 
     public function getEntityClass()
     {
-        return 'Mapping\Entity\MappingFeature';
+        return 'MappingExtensions\Entity\MappingFeature';
     }
 
     public function hydrate(Request $request, EntityInterface $entity,
@@ -181,7 +181,7 @@ class MappingFeatureAdapter extends AbstractEntityAdapter
                     $adapter = $itemAdapter;
                     $mappingFeatureAlias = $itemAdapter->createAlias();
                     $qb->innerJoin(
-                        'Mapping\Entity\MappingFeature', $mappingFeatureAlias,
+                        'MappingExtensions\Entity\MappingFeature', $mappingFeatureAlias,
                         'WITH', "$mappingFeatureAlias.item = omeka_root.id"
                     );
                 }

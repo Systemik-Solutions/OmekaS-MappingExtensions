@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Collecting;
+namespace MappingExtensions\Collecting;
 
 use Collecting\Api\Representation\CollectingPromptRepresentation;
 use Collecting\MediaType\MediaTypeInterface;

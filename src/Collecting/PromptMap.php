@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Collecting;
+namespace MappingExtensions\Collecting;
 
 use Collecting\Form\Element\PromptIsRequiredTrait;
 use Laminas\Form\Element;

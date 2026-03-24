@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Spatial\ORM\Query\AST\Functions;
+namespace MappingExtensions\Spatial\ORM\Query\AST\Functions;
 
 use LongitudeOne\Spatial\ORM\Query\AST\Functions\Standard\StBuffer as LongitudeOneStBuffer;
 

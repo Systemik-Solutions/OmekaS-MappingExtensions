@@ -1,6 +1,6 @@
 <?php
 
-namespace Mapping\Form;
+namespace MappingExtensions\Form;
 
 use Laminas\Form\Form;
 

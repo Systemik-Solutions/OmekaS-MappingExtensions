@@ -1,11 +1,11 @@
 <?php
-namespace Mapping\Service\BlockLayout;
+namespace MappingExtensions\Service\BlockLayout;
 
 use Interop\Container\ContainerInterface;
-use Mapping\Site\BlockLayout\Map;
-use Mapping\Site\BlockLayout\MapGroups;
-use Mapping\Site\BlockLayout\MapQuery;
-use Mapping\Site\BlockLayout\MapJourney;
+use MappingExtensions\Site\BlockLayout\Map;
+use MappingExtensions\Site\BlockLayout\MapGroups;
+use MappingExtensions\Site\BlockLayout\MapQuery;
+use MappingExtensions\Site\BlockLayout\MapJourney;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 
 class MapFactory implements FactoryInterface

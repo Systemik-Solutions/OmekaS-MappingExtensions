@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Site\ResourcePageBlockLayout;
+namespace MappingExtensions\Site\ResourcePageBlockLayout;
 
 use Omeka\Api\Representation\AbstractResourceEntityRepresentation;
 use Omeka\Site\ResourcePageBlockLayout\ResourcePageBlockLayoutInterface;

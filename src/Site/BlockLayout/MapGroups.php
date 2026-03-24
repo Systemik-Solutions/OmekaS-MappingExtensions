@@ -1,9 +1,9 @@
 <?php
-namespace Mapping\Site\BlockLayout;
+namespace MappingExtensions\Site\BlockLayout;
 
 use Doctrine\DBAL\Connection;
 use Laminas\View\Renderer\PhpRenderer;
-use Mapping\Form\BlockLayoutMapGroupsForm;
+use MappingExtensions\Form\BlockLayoutMapGroupsForm;
 use Omeka\Api\Representation\SiteRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
 use Omeka\Api\Representation\SitePageBlockRepresentation;

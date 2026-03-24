@@ -24,6 +24,7 @@ please ignore it. This is a known issue and will be resolved in future releases.
 - Download a ZIP package from one of the 
 [releases](https://github.com/Systemik-Solutions/OmekaS-MappingExtensions/releases).
 - Extract the ZIP into the modules directory of your Omeka S installation.
+- Rename the folder to 'MappingExtensions'.
 - In the Omeka S admin panel, go to Modules and click Install next to “Mapping Extensions”.
 
 For more details, refer to the [Omeka S module installation guide](https://omeka.org/s/docs/user-manual/modules/).

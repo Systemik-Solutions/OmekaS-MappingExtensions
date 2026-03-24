@@ -1,15 +1,15 @@
 <?php
-namespace Mapping;
+namespace MappingExtensions;
 
 use Composer\Semver\Comparator;
 use Doctrine\ORM\Events;
-use Mapping\Db\Event\Listener\DetachOrphanMappings;
+use MappingExtensions\Db\Event\Listener\DetachOrphanMappings;
 use Omeka\Api\Exception as ApiException;
 use Omeka\Api\Request;
-use Mapping\Api\Representation\MappingRepresentation;
-use Mapping\Entity\MappingFeature;
-use Mapping\Form\Element\CopyCoordinates;
-use Mapping\Form\Element\UpdateFeatures;
+use MappingExtensions\Api\Representation\MappingRepresentation;
+use MappingExtensions\Entity\MappingFeature;
+use MappingExtensions\Form\Element\CopyCoordinates;
+use MappingExtensions\Form\Element\UpdateFeatures;
 use Omeka\Module\AbstractModule;
 use Omeka\Permissions\Acl;
 use Laminas\EventManager\Event;
@@ -79,13 +79,13 @@ class Module extends AbstractModule
         // Set the corresponding visibility rules on Mapping resources.
         $em = $this->getServiceLocator()->get('Omeka\EntityManager');
         $filter = $em->getFilters()->getFilter('resource_visibility');
-        $filter->addRelatedEntity('Mapping\Entity\Mapping', 'item_id');
-        $filter->addRelatedEntity('Mapping\Entity\MappingFeature', 'item_id');
+        $filter->addRelatedEntity('MappingExtensions\Entity\Mapping', 'item_id');
+        $filter->addRelatedEntity('MappingExtensions\Entity\MappingFeature', 'item_id');
 
         $acl = $this->getServiceLocator()->get('Omeka\Acl');
         $acl->allow(
             null,
-            'Mapping\Controller\Site\Index'
+            'MappingExtensions\Controller\Site\Index'
         );
         $acl->allow(
             [Acl::ROLE_AUTHOR,
@@ -94,19 +94,19 @@ class Module extends AbstractModule
                 Acl::ROLE_REVIEWER,
                 Acl::ROLE_SITE_ADMIN,
             ],
-            ['Mapping\Api\Adapter\MappingFeatureAdapter',
-                'Mapping\Api\Adapter\MappingAdapter',
-                'Mapping\Entity\MappingFeature',
-                'Mapping\Entity\Mapping',
+            ['MappingExtensions\Api\Adapter\MappingFeatureAdapter',
+                'MappingExtensions\Api\Adapter\MappingAdapter',
+                'MappingExtensions\Entity\MappingFeature',
+                'MappingExtensions\Entity\Mapping',
             ]
         );
 
         $acl->allow(
             null,
-            ['Mapping\Api\Adapter\MappingFeatureAdapter',
-                'Mapping\Api\Adapter\MappingAdapter',
-                'Mapping\Entity\MappingFeature',
-                'Mapping\Entity\Mapping',
+            ['MappingExtensions\Api\Adapter\MappingFeatureAdapter',
+                'MappingExtensions\Api\Adapter\MappingAdapter',
+                'MappingExtensions\Entity\MappingFeature',
+                'MappingExtensions\Entity\Mapping',
             ],
             ['show', 'browse', 'read', 'search']
         );
@@ -280,7 +280,7 @@ class Module extends AbstractModule
         );
         // Add the mapping fields to advanced search pages.
         $sharedEventManager->attach(
-            'Mapping\Controller\Site\Index',
+            'MappingExtensions\Controller\Site\Index',
             'view.advanced_search',
             [$this, 'filterMapBrowseAdvancedSearch']
         );
@@ -747,12 +747,12 @@ class Module extends AbstractModule
             $mappingFeatureAlias = $itemAdapter->createAlias();
             if ($query['has_features']) {
                 $qb->innerJoin(
-                    'Mapping\Entity\MappingFeature', $mappingFeatureAlias,
+                    'MappingExtensions\Entity\MappingFeature', $mappingFeatureAlias,
                     'WITH', "$mappingFeatureAlias.item = omeka_root.id"
                 );
             } else {
                 $qb->leftJoin(
-                    'Mapping\Entity\MappingFeature', $mappingFeatureAlias,
+                    'MappingExtensions\Entity\MappingFeature', $mappingFeatureAlias,
                     'WITH', "$mappingFeatureAlias.item = omeka_root.id"
                 );
                 $qb->andWhere($qb->expr()->isNull($mappingFeatureAlias));
@@ -862,7 +862,7 @@ class Module extends AbstractModule
             // Create mapping
             $subRequest = new \Omeka\Api\Request('create', 'mappings');
             $subRequest->setContent($mappingData);
-            $mapping = new \Mapping\Entity\Mapping;
+            $mapping = new \MappingExtensions\Entity\Mapping;
             $mapping->setItem($event->getParam('entity'));
             $mappingsAdapter->hydrateEntity($subRequest, $mapping, new \Omeka\Stdlib\ErrorStore);
             $mappingsAdapter->getEntityManager()->persist($mapping);
@@ -890,7 +890,7 @@ class Module extends AbstractModule
 
         $existingFeatures = [];
         if ($item->getId()) {
-            $dql = 'SELECT mf FROM Mapping\Entity\MappingFeature mf INDEX BY mf.id WHERE mf.item = ?1';
+            $dql = 'SELECT mf FROM MappingExtensions\Entity\MappingFeature mf INDEX BY mf.id WHERE mf.item = ?1';
             $query = $entityManager->createQuery($dql)->setParameter(1, $item->getId());
             $existingFeatures = $query->getResult();
         }
@@ -911,7 +911,7 @@ class Module extends AbstractModule
             } else {
                 $subRequest = new \Omeka\Api\Request('create', 'mapping_features');
                 $subRequest->setContent($featureData);
-                $feature = new \Mapping\Entity\MappingFeature;
+                $feature = new \MappingExtensions\Entity\MappingFeature;
                 $feature->setItem($item);
                 $featuresAdapter->hydrateEntity($subRequest, $feature, new \Omeka\Stdlib\ErrorStore);
                 $entityManager->persist($feature);
@@ -1000,7 +1000,7 @@ class Module extends AbstractModule
         $services = $this->getServiceLocator();
         $entityManager = $services->get('Omeka\EntityManager');
 
-        $dql = 'DELETE FROM Mapping\Entity\MappingFeature m WHERE m.item = :item_id';
+        $dql = 'DELETE FROM MappingExtensions\Entity\MappingFeature m WHERE m.item = :item_id';
         $entityManager->createQuery($dql)
             ->setParameter('item_id', $item->getId())
             ->execute();
@@ -1042,7 +1042,7 @@ class Module extends AbstractModule
             FROM Omeka\Entity\Media m
             WHERE m.item = :item_id';
         $dqlFeature = "SELECT f
-            FROM Mapping\Entity\MappingFeature f
+            FROM MappingExtensions\Entity\MappingFeature f
             WHERE f.item = :item_id
             AND ST_GeometryType(f.geography) = 'POINT'
             AND ST_Intersects(ST_Buffer(ST_GeomFromText(:buffer_center_point), 0.00001), f.geography) = 1";
@@ -1199,7 +1199,7 @@ class Module extends AbstractModule
         $entityManager = $services->get('Omeka\EntityManager');
 
         $dql = 'SELECT m
-            FROM Mapping\Entity\MappingFeature m
+            FROM MappingExtensions\Entity\MappingFeature m
             WHERE m.item = :item_id';
         $features = $entityManager->createQuery($dql)
             ->setParameter('item_id', $item->getId())

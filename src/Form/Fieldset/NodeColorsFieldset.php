@@ -1,6 +1,6 @@
 <?php
 
-namespace Mapping\Form\Fieldset;
+namespace MappingExtensions\Form\Fieldset;
 
 use Laminas\Form\Fieldset;
 use Laminas\Form\Element\Collection;
@@ -20,7 +20,7 @@ class NodeColorsFieldset extends Fieldset
                 'should_create_template' => true,
                 'template_placeholder' => '__index__',
                 'target_element' => [
-                    'type' => \Mapping\Form\Fieldset\NodeColorPairFieldset::class,
+                    'type' => \MappingExtensions\Form\Fieldset\NodeColorPairFieldset::class,
                 ],
             ],
             'attributes' => [

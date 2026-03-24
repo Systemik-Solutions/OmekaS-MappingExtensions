@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Db\Udf;
+namespace MappingExtensions\Db\Udf;
 
 use Doctrine\ORM\Query\AST\Functions\FunctionNode;
 use Doctrine\ORM\Query\Lexer;

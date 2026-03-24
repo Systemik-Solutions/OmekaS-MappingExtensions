@@ -1,5 +1,5 @@
 <?php
-namespace Mapping\Entity;
+namespace MappingExtensions\Entity;
 
 use LongitudeOne\Spatial\PHP\Types\Geography\GeographyInterface;
 use Omeka\Entity\AbstractEntity;

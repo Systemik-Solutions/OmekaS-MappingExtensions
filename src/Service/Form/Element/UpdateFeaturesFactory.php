@@ -1,8 +1,8 @@
 <?php
-namespace Mapping\Service\Form\Element;
+namespace MappingExtensions\Service\Form\Element;
 
 use Interop\Container\ContainerInterface;
-use Mapping\Form\Element\UpdateFeatures;
+use MappingExtensions\Form\Element\UpdateFeatures;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 
 class UpdateFeaturesFactory implements FactoryInterface

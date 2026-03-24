@@ -1,9 +1,9 @@
 <?php
-namespace Mapping\Db\Event\Listener;
+namespace MappingExtensions\Db\Event\Listener;
 
 use Doctrine\ORM\Event\PreFlushEventArgs;
-use Mapping\Entity\Mapping;
-use Mapping\Entity\MappingFeature;
+use MappingExtensions\Entity\Mapping;
+use MappingExtensions\Entity\MappingFeature;
 
 /**
  * Automatically detach mappings and features that reference unknown items.

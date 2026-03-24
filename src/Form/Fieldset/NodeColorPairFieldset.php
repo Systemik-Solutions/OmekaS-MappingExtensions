@@ -1,6 +1,6 @@
 <?php
 
-namespace Mapping\Form\Fieldset;
+namespace MappingExtensions\Form\Fieldset;
 
 use Laminas\Form\Fieldset;
 use Laminas\Form\Element\Text;

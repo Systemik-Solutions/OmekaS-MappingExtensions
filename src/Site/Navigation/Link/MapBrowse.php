@@ -1,7 +1,7 @@
 <?php
-namespace Mapping\Site\Navigation\Link;
+namespace MappingExtensions\Site\Navigation\Link;
 
-use Mapping\Module;
+use MappingExtensions\Module;
 use Omeka\Api\Representation\SiteRepresentation;
 use Omeka\Site\Navigation\Link\LinkInterface;
 use Omeka\Stdlib\ErrorStore;

@@ -1,8 +1,8 @@
 <?php
-namespace Mapping\StaticSiteExport\ResourcePageBlockLayout;
+namespace MappingExtensions\StaticSiteExport\ResourcePageBlockLayout;
 
 use ArrayObject;
-use Mapping\Module;
+use MappingExtensions\Module;
 use Omeka\Api\Representation\AbstractResourceEntityRepresentation;
 use Omeka\Api\Representation\ItemRepresentation;
 use Omeka\Job\JobInterface;

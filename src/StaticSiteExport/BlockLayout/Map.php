@@ -1,8 +1,8 @@
 <?php
-namespace Mapping\StaticSiteExport\BlockLayout;
+namespace MappingExtensions\StaticSiteExport\BlockLayout;
 
 use ArrayObject;
-use Mapping\Module;
+use MappingExtensions\Module;
 use Omeka\Api\Representation\SitePageBlockRepresentation;
 use Omeka\Job\JobInterface;
 use StaticSiteExport\BlockLayout\BlockLayoutInterface;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Mapping\Omeka2Importer;
+namespace MappingExtensions\Omeka2Importer;
 
 use Omeka2Importer\Importer\AbstractImporter;
 

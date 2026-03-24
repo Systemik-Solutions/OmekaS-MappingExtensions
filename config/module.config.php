@@ -1,5 +1,5 @@
 <?php
-namespace Mapping;
+namespace MappingExtensions;
 
 use Osii\Service\ResourceMapper\ResourceMapperFactory;
 
@@ -22,7 +22,7 @@ return [
         ],
         'functions' => [
             'numeric' => [
-                'ST_Buffer' => 'Mapping\Spatial\ORM\Query\AST\Functions\StBuffer',
+                'ST_Buffer' => 'MappingExtensions\Spatial\ORM\Query\AST\Functions\StBuffer',
                 'ST_Intersects' => 'LongitudeOne\Spatial\ORM\Query\AST\Functions\Standard\StIntersects',
                 'ST_GeomFromText' => 'LongitudeOne\Spatial\ORM\Query\AST\Functions\Standard\StGeomFromText',
                 'ST_GeometryType' => 'LongitudeOne\Spatial\ORM\Query\AST\Functions\Standard\StGeometryType',
@@ -51,9 +51,9 @@ return [
     ],
     'form_elements' => [
         'factories' => [
-            'Mapping\Form\Fieldset\TimelineFieldset' => Service\Form\Fieldset\TimelineFieldsetFactory::class,
-            'Mapping\Form\Element\CopyCoordinates' => Service\Form\Element\CopyCoordinatesFactory::class,
-            'Mapping\Form\Element\UpdateFeatures' => Service\Form\Element\UpdateFeaturesFactory::class,
+            'MappingExtensions\Form\Fieldset\TimelineFieldset' => Service\Form\Fieldset\TimelineFieldsetFactory::class,
+            'MappingExtensions\Form\Element\CopyCoordinates' => Service\Form\Element\CopyCoordinatesFactory::class,
+            'MappingExtensions\Form\Element\UpdateFeatures' => Service\Form\Element\UpdateFeaturesFactory::class,
         ],
     ],
     'csv_import' => [
@@ -84,8 +84,8 @@ return [
     ],
     'controllers' => [
         'invokables' => [
-            'Mapping\Controller\Admin\Index' => Controller\Admin\IndexController::class,
-            'Mapping\Controller\Site\Index' => Controller\Site\IndexController::class,
+            'MappingExtensions\Controller\Admin\Index' => Controller\Admin\IndexController::class,
+            'MappingExtensions\Controller\Site\Index' => Controller\Site\IndexController::class,
         ],
     ],
     'collecting_media_types' => [
@@ -102,7 +102,7 @@ return [
                         'options' => [
                             'route' => '/mapping/:controller[/:action]',
                             'defaults' => [
-                                '__NAMESPACE__' => 'Mapping\Controller\Admin',
+                                '__NAMESPACE__' => 'MappingExtensions\Controller\Admin',
                                 'controller' => 'index',
                                 'action' => 'index',
                             ],
@@ -121,7 +121,7 @@ return [
                         'options' => [
                             'route' => '/mapping/:controller[/:action]',
                             'defaults' => [
-                                '__NAMESPACE__' => 'Mapping\Controller\Site',
+                                '__NAMESPACE__' => 'MappingExtensions\Controller\Site',
                                 'controller' => 'index',
                                 'action' => 'index',
                             ],
@@ -157,12 +157,12 @@ return [
     ],
     'static_site_export' => [
         'vendor_packages' => [
-            'omeka-mapping' => sprintf('%s/modules/Mapping/src/StaticSiteExport/omeka-mapping', OMEKA_PATH),
-            'leaflet' => sprintf('%s/modules/Mapping/src/StaticSiteExport/leaflet', OMEKA_PATH),
-            'leaflet.markercluster' => sprintf('%s/modules/Mapping/src/StaticSiteExport/leaflet.markercluster', OMEKA_PATH),
+            'omeka-mapping' => sprintf('%s/modules/MappingExtensions/src/StaticSiteExport/omeka-mapping', OMEKA_PATH),
+            'leaflet' => sprintf('%s/modules/MappingExtensions/src/StaticSiteExport/leaflet', OMEKA_PATH),
+            'leaflet.markercluster' => sprintf('%s/modules/MappingExtensions/src/StaticSiteExport/leaflet.markercluster', OMEKA_PATH),
         ],
         'shortcodes' => [
-            'omeka-mapping-features' => sprintf('%s/modules/Mapping/src/StaticSiteExport/omeka-mapping-features.html', OMEKA_PATH),
+            'omeka-mapping-features' => sprintf('%s/modules/MappingExtensions/src/StaticSiteExport/omeka-mapping-features.html', OMEKA_PATH),
         ],
         'block_layouts' => [
             'invokables' => [

@@ -1,6 +1,6 @@
 <?php
 // NEW: modules/Mapping/src/Form/Fieldset/GroupByFieldset.php
-namespace Mapping\Form\Fieldset;
+namespace MappingExtensions\Form\Fieldset;
 
 use Laminas\Form\Fieldset;
 use Laminas\Form\Element\Select;
