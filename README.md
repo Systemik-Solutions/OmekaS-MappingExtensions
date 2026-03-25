@@ -17,10 +17,6 @@ colors, and visualize journeys of geo-located resources.
 module. It cannot operate alongside the original Mapping module. If the official Mapping module is currently 
 installed, it must be fully uninstalled before installing Mapping Extensions.
 
-> [!WARNING]
-> If the module list page displays the message “A new version of this module is available. Get the new version.”, 
-please ignore it. This is a known issue and will be resolved in future releases.
-
 - Download a ZIP package from one of the 
 [releases](https://github.com/Systemik-Solutions/OmekaS-MappingExtensions/releases).
 - Extract the ZIP into the modules directory of your Omeka S installation.
@@ -28,6 +24,24 @@ please ignore it. This is a known issue and will be resolved in future releases.
 - In the Omeka S admin panel, go to Modules and click Install next to “Mapping Extensions”.
 
 For more details, refer to the [Omeka S module installation guide](https://omeka.org/s/docs/user-manual/modules/).
+
+### Upgrading from 1.0.0 to 1.0.1
+
+> [!CAUTION]
+> DON'T uninstall the older version of the module, or you will lose all your existing maps and configurations.
+
+As the v1.0.1 release resolves the namespace conflict with the original Mapping module, the directory name of the module 
+has changed from "Mapping" to "MappingExtensions". To upgrade from v1.0.0 to v1.0.1, follow these steps to manually
+update the module without losing your existing maps and configurations:
+
+1. Back up your Omeka S database and the "Mapping" module directory in your Omeka S installation.
+2. Remove the "Mapping" module directory in `modules/` from your Omeka S installation.
+3. Download the v1.0.1 release and extract the zip file into the `modules/` directory. After this step, you should have 
+a new directory named "MappingExtensions" in `modules/`.
+4. Go to the Omeka S MySQL database and open the database table `module`. Find the record for the `Mapping` module (`id='Mapping'`'), 
+then update the `id` field to `MappingExtensions` and the `version` field to `1.0.1`.
+5. Go to the "Modules" page in the Omeka S admin panel and verify that the "Mapping Extensions" module is listed with 
+version 1.0.1 and is active.
 
 ## Usage
 
