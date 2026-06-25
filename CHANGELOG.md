@@ -2,7 +2,7 @@
 
 All notable changes to this module will be documented in this file.
 
-## [1.0.2] - 2026-06-25
+## [1.1.0] - 2026-06-25
 
 ### Added
 - **Sidebar tabs:** Added configurable sidebar tabs for Map by query blocks, allowing marker details to open in a map sidebar with tab-specific content.
