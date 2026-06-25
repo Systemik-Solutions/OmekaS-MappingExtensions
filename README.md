@@ -57,6 +57,19 @@ linked items should be included. If no property is selected, all linked items co
 displayed.
 - Configure the popup content. You can configure which additional properties of linked items appear in the popup.
 
+### Sidebar tabs
+
+Sidebar tabs let a Map by query block show marker details in a map sidebar instead of popup. This is
+useful when item records need more room for item property display
+
+- In your site, add or edit a "Map by query" block.
+- In the "Sidebar tabs" section, check "Show tabs in place sidebar" to open item details in a panel on the map.
+- Optionally check "Show tabs in marker popup" if you want the same tab configuration to appear in the marker popup instead of the sidebar.
+- Add one or more tabs. Each tab can have a label, popup content, and selected fields.
+- Available fields include media, property values, linked-from items, and an external link to the full item
+record.
+- If no tabs are configured, the module falls back to a default Details tab using the block's configured popup display properties.
+
 ### Grouping Items
 
 The Grouping feature in Mapping Extensions allows you to visually organize items on the map by applying colors to 

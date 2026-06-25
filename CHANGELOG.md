@@ -2,6 +2,17 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.0.2] - 2026-06-25
+
+### Added
+- **Sidebar tabs:** Added configurable sidebar tabs for Map by query blocks, allowing marker details to open in a map sidebar with tab-specific content.
+- **Sidebar popup mode:** Added an option to render the same configured tabs inside marker popups instead of the sidebar.
+- **Sidebar content options:** Added tab content controls for media, selected properties, linked-from items, and external item links.
+
+### Fixed
+- **Timeline layout:** Fix the location of the timeline slider.
+
+
 ## [1.0.1] - 2026-03-20
 
 ### Fixed

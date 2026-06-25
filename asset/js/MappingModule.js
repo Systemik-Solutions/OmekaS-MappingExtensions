@@ -39,6 +39,12 @@ const MappingModule = {
             }
 
             const clusterMarkers = e.layer.getAllChildMarkers();
+            if (map.mapping_sidebar_mode && map.mapping_show_cluster_sidebar) {
+                if (e.layer && e.layer.spiderfy) e.layer.spiderfy();
+                map.mapping_show_cluster_sidebar(clusterMarkers, e.latlng);
+                return;
+            }
+
             const count = clusterMarkers.length;
 
             let rowsHtml = "";
@@ -68,7 +74,7 @@ const MappingModule = {
             const container = popup.getElement();
             if (!container) return;
 
-            // Click a title => focus its marker, open its popup, show a quick highlight
+            // Click a title => focus its marker, open its popup, and highlight it.
             container.querySelectorAll(".cluster-jump").forEach((a) => {
                 a.addEventListener("click", function (ev) {
                     ev.preventDefault();
@@ -81,15 +87,7 @@ const MappingModule = {
                     if (e.layer && e.layer.spiderfy) e.layer.spiderfy();
                     map.panTo(m.getLatLng(), { animate: true });
                     if (m.openPopup) m.openPopup();
-
-                    const pulse = L.circleMarker(m.getLatLng(), {
-                        radius: 16,
-                        weight: 3,
-                        color: "#ff6600",
-                        fill: false,
-                        opacity: 0.9
-                    }).addTo(map);
-                    setTimeout(() => map.removeLayer(pulse), 2000);
+                    MappingModule.highlightMarker(map, m);
                 });
             });
         });
@@ -165,6 +163,34 @@ const MappingModule = {
             }
         }
         if (!blockData) blockData = {};
+
+        const sidebarTabsEnabled = !!(
+            blockData.sidebar_tabs
+            && (
+                blockData.sidebar_tabs.enabled === "1"
+                || blockData.sidebar_tabs.enabled === 1
+                || blockData.sidebar_tabs.enabled === true
+            )
+        );
+        const sidebarTabsInPopup = !!(
+            sidebarTabsEnabled
+            && blockData.sidebar_tabs
+            && (
+                blockData.sidebar_tabs.popup_enabled === "1"
+                || blockData.sidebar_tabs.popup_enabled === 1
+                || blockData.sidebar_tabs.popup_enabled === true
+            )
+        );
+        map.mapping_sidebar_mode = sidebarTabsEnabled && !sidebarTabsInPopup;
+        map.mapping_tabbed_popup_mode = sidebarTabsInPopup;
+
+        if (map.mapping_sidebar_mode) {
+            MappingModule.prepareSidebar(
+                map,
+                getFeaturePopupContentUrl,
+                blockData
+            );
+        }
 
         // Observe a map interaction (done programmatically or by the user).
         if ("undefined" === typeof map.mapping_map_interaction) {
@@ -288,6 +314,7 @@ const MappingModule = {
                 const resourceId = featureData[1];
                 const featureGeography = featureData[2];
                 const color = featureData[3] || null; // NEW: hex or null
+                const itemUrl = featureData[4] || '';
 
                 // Build a consistent style object once
                 const styleForPaths = color
@@ -331,9 +358,26 @@ const MappingModule = {
                         return L.marker(latlng);
                     },
                     onEachFeature: function (feature, layer) {
-                        const popup = L.popup();
-                        layer.bindPopup(popup);
-                        if (getFeaturePopupContentUrl) {
+                        layer.mapping_feature_id = featureId;
+                        layer.mapping_resource_id = resourceId;
+                        layer.mapping_feature_title = featureGeography.properties?.title || '';
+                        layer.mapping_feature_url = itemUrl;
+
+                        if (getFeaturePopupContentUrl && sidebarTabsInPopup) {
+                            const popup = L.popup({ maxWidth: 480 });
+                            layer.bindPopup(popup);
+                            layer.on("popupopen", function () {
+                                MappingModule.showTabbedPopup(
+                                    map,
+                                    popup,
+                                    layer,
+                                    getFeaturePopupContentUrl,
+                                    blockData
+                                );
+                            });
+                        } else if (getFeaturePopupContentUrl && !sidebarTabsEnabled) {
+                            const popup = L.popup();
+                            layer.bindPopup(popup);
                             layer.on("popupopen", function () {
                                 const popupProps = Array.isArray(
                                     blockData.popup_display_properties
@@ -394,9 +438,380 @@ const MappingModule = {
      * @param {L.layer} layer
      * @param {string} type
      */
+    clearMarkerHighlight: function(map, marker) {
+        const current = map.mapping_marker_highlight;
+        if (!current || (marker && current.marker !== marker)) {
+            return;
+        }
+
+        if (current.pulse && map.hasLayer(current.pulse)) {
+            map.removeLayer(current.pulse);
+        }
+        map.mapping_marker_highlight = null;
+    },
+    prepareSidebar: function(map, getFeaturePopupContentUrl, blockData) {
+        if (map.mapping_sidebar_prepared) {
+            return;
+        }
+        map.mapping_sidebar_prepared = true;
+
+        const mapContainer = map._container;
+        const block = mapContainer ? mapContainer.closest(".mapping-block") : null;
+        if (!mapContainer) {
+            return;
+        }
+
+        mapContainer.classList.add("mapping-sidebar-enabled");
+        map.mapping_sidebar_popup_content_url = getFeaturePopupContentUrl;
+        map.mapping_sidebar_block_data = blockData;
+
+        let sidebar = mapContainer.querySelector(".mapping-sidebar-panel");
+        if (!sidebar && block) {
+            sidebar = block.querySelector(".mapping-sidebar-panel");
+        }
+        if (!sidebar) {
+            sidebar = document.createElement("aside");
+            sidebar.className = "mapping-sidebar-panel";
+            sidebar.innerHTML = [
+                '<button type="button" class="mapping-sidebar-close" aria-label="Close">&times;</button>',
+                '<div class="mapping-sidebar-inner"></div>'
+            ].join("");
+        }
+        if (window.getComputedStyle(mapContainer).position === "static") {
+            mapContainer.style.position = "relative";
+        }
+        mapContainer.appendChild(sidebar);
+        if (L.DomEvent) {
+            L.DomEvent.disableClickPropagation(sidebar);
+            L.DomEvent.disableScrollPropagation(sidebar);
+        }
+
+        const closeSidebar = function() {
+            sidebar.classList.remove("is-open");
+            sidebar.querySelector(".mapping-sidebar-inner").innerHTML = "";
+            MappingModule.clearMarkerHighlight(map);
+            if (map.closePopup) {
+                map.closePopup();
+            }
+        };
+
+        sidebar.querySelector(".mapping-sidebar-close").addEventListener("click", closeSidebar);
+        map.on("popupclose", function() {
+            if (!map.mapping_sidebar_mode) {
+                return;
+            }
+            closeSidebar();
+        });
+
+        map.mapping_close_sidebar = closeSidebar;
+        map.mapping_show_feature_sidebar = function(marker) {
+            MappingModule.showSidebarFeature(
+                map,
+                sidebar,
+                marker,
+                getFeaturePopupContentUrl,
+                blockData,
+                false
+            );
+        };
+        map.mapping_show_cluster_sidebar = function(markers, latlng) {
+            const inner = sidebar.querySelector(".mapping-sidebar-inner");
+            const count = markers.length;
+            MappingModule.clearMarkerHighlight(map);
+            map.mapping_sidebar_cluster_context = {
+                markers: markers,
+                latlng: latlng,
+                label: count + ' ' + (count === 1 ? 'place' : 'places') + ' at this location'
+            };
+
+            let html = [
+                '<div class="mapping-sidebar-header">',
+                '<h3>' + MappingModule.escapeHtml(map.mapping_sidebar_cluster_context.label) + '</h3>',
+                '<p>Choose a place to view its detail.</p>',
+                '</div>',
+                '<ul class="mapping-sidebar-list">'
+            ].join("");
+
+            markers.forEach(function(marker, index) {
+                html += [
+                    '<li>',
+                    '<button type="button" class="mapping-sidebar-list-item" data-marker-index="' + index + '">',
+                    '<span class="mapping-sidebar-list-dot" aria-hidden="true"></span>',
+                    '<span>' + MappingModule.escapeHtml(marker.mapping_feature_title || 'Untitled') + '</span>',
+                    '<span class="mapping-sidebar-list-arrow" aria-hidden="true">&rsaquo;</span>',
+                    '</button>',
+                    '</li>'
+                ].join("");
+            });
+            html += '</ul>';
+
+            inner.innerHTML = html;
+            sidebar.classList.add("is-open");
+            if (latlng) {
+                map.panTo(latlng, { animate: true });
+            }
+
+            inner.querySelectorAll(".mapping-sidebar-list-item").forEach(function(button) {
+                button.addEventListener("click", function() {
+                    const marker = markers[parseInt(this.getAttribute("data-marker-index"), 10)];
+                    if (!marker) {
+                        return;
+                    }
+                    map.panTo(marker.getLatLng(), { animate: true });
+                    MappingModule.highlightMarker(map, marker);
+                    MappingModule.showSidebarFeature(map, sidebar, marker, getFeaturePopupContentUrl, blockData, true);
+                });
+            });
+        };
+    },
+    showSidebarFeature: function(map, sidebar, marker, getFeaturePopupContentUrl, blockData, fromClusterList = false) {
+        if (!sidebar || !marker) {
+            return;
+        }
+
+        const inner = sidebar.querySelector(".mapping-sidebar-inner");
+        const tabs = MappingModule.getSidebarTabs(blockData);
+        const title = marker.mapping_feature_title || 'Item';
+        const titleHtml = marker.mapping_feature_url
+            ? '<a href="' + MappingModule.escapeHtml(marker.mapping_feature_url) + '">' + MappingModule.escapeHtml(title) + '</a>'
+            : MappingModule.escapeHtml(title);
+
+        const renderShell = function(activeIndex) {
+            const tabButtons = tabs.map(function(tab, index) {
+                return [
+                    '<button type="button" class="mapping-sidebar-tab',
+                    index === activeIndex ? ' is-active' : '',
+                    '" data-tab-index="' + index + '">',
+                    MappingModule.escapeHtml(tab.label || ('Tab ' + (index + 1))),
+                    '</button>'
+                ].join("");
+            }).join("");
+            const clusterContext = fromClusterList ? map.mapping_sidebar_cluster_context : null;
+            const backButton = clusterContext
+                ? '<button type="button" class="mapping-sidebar-back">&larr; ' + MappingModule.escapeHtml(clusterContext.label) + '</button>'
+                : '';
+
+            inner.innerHTML = [
+                backButton,
+                '<div class="mapping-sidebar-header">',
+                '<h3>' + titleHtml + '</h3>',
+                '</div>',
+                '<div class="mapping-sidebar-tabs" role="tablist">',
+                tabButtons,
+                '</div>',
+                '<div class="mapping-sidebar-content">Loading...</div>'
+            ].join("");
+
+            inner.querySelectorAll(".mapping-sidebar-tab").forEach(function(button) {
+                button.addEventListener("click", function() {
+                    loadTab(parseInt(this.getAttribute("data-tab-index"), 10));
+                });
+            });
+
+            const back = inner.querySelector(".mapping-sidebar-back");
+            if (back && clusterContext) {
+                back.addEventListener("click", function() {
+                    map.mapping_show_cluster_sidebar(clusterContext.markers, clusterContext.latlng);
+                });
+            }
+        };
+
+        const loadTab = function(activeIndex) {
+            const tab = tabs[activeIndex] || tabs[0];
+            renderShell(activeIndex);
+            const content = inner.querySelector(".mapping-sidebar-content");
+
+            if (!getFeaturePopupContentUrl || !marker.mapping_feature_id) {
+                content.textContent = 'No details available.';
+                return;
+            }
+
+            $.get(
+                getFeaturePopupContentUrl,
+                {
+                    feature_id: marker.mapping_feature_id,
+                    resource_id: marker.mapping_resource_id,
+                    popup_props: JSON.stringify(MappingModule.tabUsesContent(tab, 'property') ? (tab.properties || []) : []),
+                    is_journey_map: (blockData && blockData.journey) ? 1 : 0,
+                    sidebar_content: 1,
+                    sidebar_content_options: JSON.stringify(tab.popup_content || []),
+                },
+                function(popupContent) {
+                    content.innerHTML = popupContent;
+                }
+            );
+        };
+
+        sidebar.classList.add("is-open");
+        loadTab(0);
+    },
+    showTabbedPopup: function(map, popup, marker, getFeaturePopupContentUrl, blockData) {
+        if (!popup || !marker) {
+            return;
+        }
+
+        const tabs = MappingModule.getSidebarTabs(blockData);
+        const title = marker.mapping_feature_title || 'Item';
+
+        const renderShell = function(activeIndex) {
+            const tabButtons = tabs.map(function(tab, index) {
+                return [
+                    '<button type="button" class="mapping-popup-tab',
+                    index === activeIndex ? ' is-active' : '',
+                    '" data-tab-index="' + index + '">',
+                    MappingModule.escapeHtml(tab.label || ('Tab ' + (index + 1))),
+                    '</button>'
+                ].join("");
+            }).join("");
+
+            popup.setContent([
+                '<div class="mapping-tabbed-popup">',
+                '<div class="mapping-tabbed-popup-header">',
+                '<h3>' + MappingModule.escapeHtml(title) + '</h3>',
+                '</div>',
+                '<div class="mapping-popup-tabs" role="tablist">',
+                tabButtons,
+                '</div>',
+                '<div class="mapping-tabbed-popup-content mapping-sidebar-content">Loading...</div>',
+                '</div>'
+            ].join(""));
+
+            const container = popup.getElement();
+            if (!container) {
+                return;
+            }
+
+            container.classList.add("mapping-tabbed-popup-leaflet");
+
+            if (L.DomEvent) {
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.disableScrollPropagation(container);
+            }
+
+            container.querySelectorAll(".mapping-popup-tab").forEach(function(button) {
+                button.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    loadTab(parseInt(this.getAttribute("data-tab-index"), 10));
+                });
+            });
+        };
+
+        const loadTab = function(activeIndex) {
+            const tab = tabs[activeIndex] || tabs[0];
+            renderShell(activeIndex);
+
+            const container = popup.getElement();
+            const content = container ? container.querySelector(".mapping-tabbed-popup-content") : null;
+            if (!content) {
+                return;
+            }
+
+            if (!getFeaturePopupContentUrl || !marker.mapping_feature_id) {
+                content.textContent = 'No details available.';
+                return;
+            }
+
+            const requestId = (popup.mapping_tab_request_id || 0) + 1;
+            popup.mapping_tab_request_id = requestId;
+            $.get(
+                getFeaturePopupContentUrl,
+                {
+                    feature_id: marker.mapping_feature_id,
+                    resource_id: marker.mapping_resource_id,
+                    popup_props: JSON.stringify(MappingModule.tabUsesContent(tab, 'property') ? (tab.properties || []) : []),
+                    is_journey_map: (blockData && blockData.journey) ? 1 : 0,
+                    sidebar_content: 1,
+                    sidebar_content_options: JSON.stringify(tab.popup_content || []),
+                },
+                function(popupContent) {
+                    if (popup.mapping_tab_request_id !== requestId) {
+                        return;
+                    }
+                    const currentContainer = popup.getElement();
+                    const currentContent = currentContainer ? currentContainer.querySelector(".mapping-tabbed-popup-content") : null;
+                    if (currentContent) {
+                        currentContent.innerHTML = popupContent;
+                    }
+                }
+            );
+        };
+
+        loadTab(0);
+    },
+    getSidebarTabs: function(blockData) {
+        const configuredTabs = blockData
+            && blockData.sidebar_tabs
+            && Array.isArray(blockData.sidebar_tabs.tabs)
+            ? blockData.sidebar_tabs.tabs
+            : [];
+
+        const tabs = configuredTabs
+            .filter(function(tab) {
+                return tab && (
+                    tab.label
+                    || (Array.isArray(tab.properties) && tab.properties.length)
+                    || (Array.isArray(tab.popup_content) && tab.popup_content.length)
+                );
+            })
+            .map(function(tab) {
+                return {
+                    label: tab.label || 'Details',
+                    properties: Array.isArray(tab.properties) ? tab.properties : [],
+                    popup_content: Array.isArray(tab.popup_content) ? tab.popup_content : []
+                };
+            });
+
+        return tabs.length ? tabs : [{
+            label: 'Details',
+            properties: Array.isArray(blockData.popup_display_properties)
+                ? blockData.popup_display_properties
+                : [],
+            popup_content: ['property']
+        }];
+    },
+    tabUsesContent: function(tab, contentKey) {
+        return !!(tab && Array.isArray(tab.popup_content) && tab.popup_content.includes(contentKey));
+    },
+    escapeHtml: function(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    },
+    highlightMarker: function(map, marker) {
+        if (!marker || !marker.getLatLng) {
+            return;
+        }
+
+        MappingModule.clearMarkerHighlight(map);
+
+        const pulse = L.circleMarker(marker.getLatLng(), {
+            radius: 16,
+            weight: 3,
+            color: "#ff6600",
+            fill: false,
+            opacity: 0.9
+        }).addTo(map);
+        map.mapping_marker_highlight = {
+            marker: marker,
+            pulse: pulse
+        };
+    },
     addFeature: function(map, featuresPoint, featuresPoly, layer, type) {
         switch (type) {
             case 'Point':
+            layer.on('click', function() {
+                MappingModule.highlightMarker(map, layer);
+                if (map.mapping_sidebar_mode && map.mapping_show_feature_sidebar) {
+                    map.mapping_show_feature_sidebar(layer);
+                }
+            });
+            layer.on('popupclose', function() {
+                MappingModule.clearMarkerHighlight(map, layer);
+            });
             featuresPoint.addLayer(layer);
             break;
 

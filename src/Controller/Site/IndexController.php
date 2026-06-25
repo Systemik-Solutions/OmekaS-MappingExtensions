@@ -123,6 +123,7 @@ class IndexController extends AbstractActionController
                 $displayItem->id(),
                 $featureArray,
                 $color,
+                $displayItem->url(),
             ];
 
             $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
@@ -297,6 +298,7 @@ class IndexController extends AbstractActionController
                     (int) $linkedId,
                     $featureArray,
                     $color,
+                    $displayItem->url(),
                 ];
 
                 $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
@@ -395,8 +397,9 @@ class IndexController extends AbstractActionController
                         $features[] = [
                             (int) $journeyPlaceMappingFeature->id(),
                             (int) $journeyPlace->id(),
-                            $geography,
+                            $this->buildFeatureArray($geography, $journeyPlace->displayTitle()),
                             $color,
+                            $journeyPlace->url(),
                         ];
 
                         $this->addLegendForItem(
@@ -424,6 +427,7 @@ class IndexController extends AbstractActionController
                     (int) $originalItem->id(),
                     $lineFeature,
                     $color,
+                    $originalItem->url(),
                 ];
             }
         }
@@ -457,9 +461,15 @@ class IndexController extends AbstractActionController
             }
         }
 
+        $isSidebarContent = (bool) $this->params()->fromQuery('sidebar_content', false);
+        $sidebarContentOptions = $this->getSidebarContentOptions();
+
         $view = new ViewModel();
         $view->setTerminal(true);
-        $view->setTemplate('mapping/site/index/get-feature-popup-content');
+        $view->setTemplate($isSidebarContent
+            ? 'mapping/site/index/get-feature-sidebar-content'
+            : 'mapping/site/index/get-feature-popup-content'
+        );
         $view->setVariable('feature', $feature);
         $view->setVariable('item', $item);
         $view->setVariable('originalItem', $originalItem);
@@ -480,8 +490,51 @@ class IndexController extends AbstractActionController
 
         $isJourneyMap = (bool) $this->params()->fromQuery('is_journey_map', false);
         $view->setVariable('isJourneyMap', $isJourneyMap);
+        $view->setVariable('sidebarContentOptions', $sidebarContentOptions);
+        $view->setVariable('showMedia', in_array('media', $sidebarContentOptions, true));
+        $view->setVariable('showProperties', in_array('property', $sidebarContentOptions, true));
+        $view->setVariable('showLinkedFrom', in_array('linked_from', $sidebarContentOptions, true));
+        $view->setVariable('showExternalLink', in_array('external_link', $sidebarContentOptions, true));
+
+        $relatedItems = [];
+        if ($isSidebarContent && in_array('linked_from', $sidebarContentOptions, true) && $item) {
+            try {
+                $relatedItems = $this->api()->search('items', [
+                    'property' => [[
+                        'joiner'   => 'and',
+                        'property' => 0,
+                        'type'     => 'res',
+                        'text'     => $item->id(),
+                    ]],
+                    'per_page'  => 999,
+                    'page'      => 1,
+                    'is_public' => 1,
+                ])->getContent();
+            } catch (\Exception $e) {
+                $this->logger()->warn(sprintf(
+                    'Failed to load linked-from items for item %d: %s',
+                    $item->id(),
+                    $e->getMessage()
+                ));
+            }
+        }
+        $view->setVariable('relatedItems', $relatedItems);
 
         return $view;
+    }
+
+    private function getSidebarContentOptions(): array
+    {
+        $raw = $this->params()->fromQuery('sidebar_content_options', '[]');
+        $options = json_decode($raw, true);
+        if (!is_array($options)) {
+            $options = array_filter(array_map('trim', explode(',', (string) $raw)));
+        }
+
+        $allowed = ['media', 'property', 'linked_from', 'external_link'];
+        return array_values(array_intersect($allowed, array_unique(array_map(static function ($option) {
+            return trim((string) $option);
+        }, $options))));
     }
 
     /**

@@ -20,3 +20,19 @@ ul.mapping-overlays {
 .sortable-row.mapping-overlay-editing {
     box-shadow: 0 0 0 1px rgba(0,0,0,.15);
 }
+
+.sidebar-tabs-settings .sidebar-tabs-rows > fieldset {
+    border: 1px solid #dfdfdf;
+    margin: 0 0 12px;
+    padding: 12px;
+}
+
+.sidebar-tabs-settings .sidebar-tab-handle {
+    cursor: move;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.sidebar-tabs-settings .sidebar-tab-remove {
+    margin-top: 6px;
+}

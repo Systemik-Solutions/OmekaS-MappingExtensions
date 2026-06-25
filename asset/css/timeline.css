@@ -9,11 +9,16 @@
   display: flex;
 }
 
-.mapping-block.timeline > .mapping-timeline,
-.mapping-block.timeline > .mapping-map {
-  flex: 0 0 50%;
+.mapping-block.timeline > .mapping-timeline {
+  flex: 0 0 40%;
   min-width: 0;
-  width: 50%;
+  width: 40%;
+}
+
+.mapping-block.timeline > .mapping-map {
+  flex: 0 0 60%;
+  min-width: 0;
+  width: 60%;
 }
 
 .mapping-block.timeline .tl-timeline {

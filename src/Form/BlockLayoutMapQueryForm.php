@@ -25,6 +25,10 @@ class BlockLayoutMapQueryForm extends Form
             'name' => 'query',
         ]);
         $this->add([
+            'type' => Fieldset\SidebarTabsFieldset::class,
+            'name' => 'sidebar_tabs',
+        ]);
+        $this->add([
             'type' => Fieldset\GroupByFieldset::class,
             'name' => 'group_by_control'
         ]);
@@ -41,6 +45,7 @@ class BlockLayoutMapQueryForm extends Form
             $this->get('overlays')->filterBlockData($rawData),
             $this->get('timeline')->filterBlockData($rawData),
             $this->get('query')->filterBlockData($rawData),
+            $this->get('sidebar_tabs')->filterBlockData($rawData),
             $this->get('group_by_control')->filterBlockData($rawData),
             $this->get('node_colors')->filterBlockData($rawData)
         );
@@ -90,6 +95,11 @@ class BlockLayoutMapQueryForm extends Form
             ],
             'query' => [
                 'o:block[__blockIndex__][o:data][query]' => $data['query'],
+            ],
+            'sidebar_tabs' => [
+                'enabled' => $data['sidebar_tabs']['enabled'],
+                'popup_enabled' => $data['sidebar_tabs']['popup_enabled'],
+                'tabs' => $data['sidebar_tabs']['tabs'],
             ],
             'group_by_control' => [
                 'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',

@@ -1,0 +1,222 @@
+<?php
+
+/** @var \Laminas\View\Renderer\PhpRenderer $this */
+/** @var array $data */
+/** @var \Laminas\Form\Form $form */
+
+use Laminas\Form\Factory as FormFactory;
+
+$services = $this->getHelperPluginManager()->getServiceLocator();
+$formElementManager = $services->get('FormElementManager');
+$factory = new FormFactory($formElementManager);
+
+$sidebarTabs = $form->get('sidebar_tabs');
+$sidebarTabs->setName('o:block[__blockIndex__][o:data][sidebar_tabs]');
+
+$tabs = $sidebarTabs->get('tabs');
+$tabs->setFormFactory($factory);
+$tabs->setTargetElement($formElementManager->get(\MappingExtensions\Form\Fieldset\SidebarTabFieldset::class));
+
+$form->prepare();
+?>
+
+<a href="#" class="collapse"><h4><?= $this->translate('Sidebar tabs'); ?></h4></a>
+<div class="collapsible sidebar-tabs-settings" style="overflow: visible;">
+    <?= $this->formRow($sidebarTabs->get('enabled')); ?>
+    <?= $this->formRow($sidebarTabs->get('popup_enabled')); ?>
+
+    <div class="sidebar-tabs-rows">
+        <?= $this->formCollection($tabs, false); ?>
+    </div>
+
+    <button type="button" class="button sidebar-tab-add">
+        + <?= $this->escapeHtml($this->translate('Add tab')); ?>
+    </button>
+</div>
+
+<script>
+    (function($) {
+        function initChosen(scope) {
+            $(scope).find('select.sidebar-tab-properties').each(function() {
+                const $select = $(this);
+                if ($select.data('sidebarTabsChosenInit')) return;
+
+                if ($.fn.chosen) {
+                    $select.chosen({
+                        width: '100%',
+                        include_group_label_in_selected: true,
+                        placeholder_text_multiple: $select.data('placeholder') || 'Select one or more properties...'
+                    });
+                    $select.data('sidebarTabsChosenInit', 1);
+                }
+            });
+        }
+
+        function addHandles($scope) {
+            $scope.find('.sidebar-tabs-rows > fieldset').each(function() {
+                const $fieldset = $(this);
+                if ($fieldset.children('.sidebar-tab-handle').length) return;
+                $fieldset.prepend('<span class="sortable-handle sidebar-tab-handle" aria-hidden="true"></span>');
+            });
+        }
+
+        function getBlockIndex($scope) {
+            const anyName = $scope.find('[name^="o:block["]').first().attr('name') || '';
+            const match = anyName.match(/^o:block\[(\d+)]/);
+            return match ? match[1] : '__blockIndex__';
+        }
+
+        function nextTabIndex($scope) {
+            let maxIndex = -1;
+            $scope.find('[name*="[sidebar_tabs][tabs]"]').each(function() {
+                const match = (this.name || '').match(/\[sidebar_tabs]\[tabs]\[(\d+)]\[/);
+                if (match) {
+                    maxIndex = Math.max(maxIndex, parseInt(match[1], 10));
+                }
+            });
+            return maxIndex + 1;
+        }
+
+        function addTab($scope) {
+            const $template = $scope.find('span[data-template]').last();
+            if (!$template.length) return;
+
+            const html = ($template.attr('data-template') || '')
+                .replace(/__blockIndex__/g, String(getBlockIndex($scope)))
+                .replace(/__index__/g, String(nextTabIndex($scope)));
+
+            if (!html) return;
+
+            const $row = $(html);
+            $row.insertBefore($template);
+            addHandles($scope);
+            initChosen($row);
+            applyPropertyVisibility($scope);
+        }
+
+        function removeTab($button) {
+            const $scope = $button.closest('.sidebar-tabs-settings');
+            const name = $button.attr('name') || '';
+            const match = name.match(/\[tabs\]\[([^\]]+)\]\[remove\]/);
+            let tabIndex = match ? match[1] : tabIndexFromName(name);
+
+            if (tabIndex === null) {
+                const indexedField = $button.closest('fieldset').find('[name*="[tabs]["]').first();
+                tabIndex = tabIndexFromName(indexedField.attr('name'));
+            }
+
+            if (tabIndex === null) {
+                $button.closest('fieldset').remove();
+                return;
+            }
+
+            const tabSelector = '[name*="[tabs][' + tabIndex + ']"]';
+            const $tabFields = $scope.find(tabSelector);
+            const $rowFieldset = $button.closest('fieldset');
+
+            $tabFields.filter('select.sidebar-tab-properties').each(function() {
+                const $select = $(this);
+                if ($select.data('chosen')) {
+                    $select.chosen('destroy');
+                }
+            });
+
+            $tabFields.each(function() {
+                const $field = $(this).closest('.field');
+                if ($field.length) {
+                    $field.remove();
+                } else {
+                    $(this).remove();
+                }
+            });
+
+            if ($rowFieldset.length && !$rowFieldset.find('[name]').length) {
+                $rowFieldset.remove();
+            }
+        }
+
+        function applyVisibility($scope) {
+            const enabled = $scope.find('input.sidebar-tabs-enabled[type="checkbox"]').first().is(':checked');
+            const $popupField = $scope.find('input.sidebar-tabs-popup-enabled[type="checkbox"]').closest('.field');
+            ($popupField.length ? $popupField : $scope.find('input.sidebar-tabs-popup-enabled[type="checkbox"]').parent()).toggle(enabled);
+            $scope.find('.sidebar-tabs-rows, .sidebar-tab-add').toggle(enabled);
+            applyPropertyVisibility($scope);
+        }
+
+        function tabIndexFromName(name) {
+            const match = String(name || '').match(/\[tabs\]\[([^\]]+)\]\[/);
+            return match ? match[1] : null;
+        }
+
+        function tabUsesProperties($scope, tabIndex) {
+            if (tabIndex === null) return false;
+            return $scope
+                .find('input[type="checkbox"][name*="[tabs][' + tabIndex + '][popup_content]"][value="property"]')
+                .is(':checked');
+        }
+
+        function applyPropertyVisibility($scope) {
+            $scope.find('select.sidebar-tab-properties').each(function() {
+                const $select = $(this);
+                const tabIndex = tabIndexFromName($select.attr('name'));
+                const showProperties = tabUsesProperties($scope, tabIndex);
+                const $field = $select.closest('.field');
+                ($field.length ? $field : $select.parent()).toggle(showProperties);
+                $select.next('.chosen-container').toggle(showProperties);
+            });
+        }
+
+        function initSortable($scope) {
+            const $rows = $scope.find('.sidebar-tabs-rows').first();
+            if (!window.Sortable || !$rows.length || $rows.data('sidebarTabsSortable')) return;
+
+            new Sortable($rows[0], {
+                draggable: 'fieldset',
+                handle: '.sidebar-tab-handle'
+            });
+            $rows.data('sidebarTabsSortable', 1);
+        }
+
+        function wireOne(scope) {
+            const $scope = $(scope);
+            if ($scope.data('sidebarTabsWired')) return;
+            $scope.data('sidebarTabsWired', true);
+
+            addHandles($scope);
+            initChosen($scope);
+            initSortable($scope);
+            applyVisibility($scope);
+
+            $scope.on('click.sidebarTabs', '.sidebar-tab-add', function(e) {
+                e.preventDefault();
+                addTab($scope);
+            });
+
+            $scope.on('click.sidebarTabs', '.sidebar-tab-remove', function(e) {
+                e.preventDefault();
+                removeTab($(this));
+            });
+
+            $scope.on('change.sidebarTabs', 'input.sidebar-tabs-enabled[type="checkbox"]', function() {
+                applyVisibility($scope);
+            });
+
+            $scope.on('change.sidebarTabs', 'input[name*="[popup_content]"]', function() {
+                applyPropertyVisibility($scope);
+            });
+        }
+
+        $(function() {
+            $('.sidebar-tabs-settings').each(function() {
+                wireOne(this);
+            });
+        });
+
+        $(document).on('o:block-added o:form-loaded o:form-updated o:collection-add', function(_e, ctx) {
+            const $ctx = ctx ? $(ctx) : $(document);
+            $ctx.find('.sidebar-tabs-settings').each(function() {
+                wireOne(this);
+            });
+        });
+    })(jQuery);
+</script>

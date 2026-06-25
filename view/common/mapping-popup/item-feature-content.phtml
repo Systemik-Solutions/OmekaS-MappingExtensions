@@ -27,6 +27,9 @@ $allValuesByTerm =  (array) $displayItem->values();
             $propertyData = $allValuesByTerm[$term] ?? null;
 
             $propertyValues = $propertyData['values'] ?? [];
+            $propertyValues = array_filter($propertyValues, function ($value) {
+                return !method_exists($value, 'isPublic') || $value->isPublic();
+            });
             if (!$propertyValues) continue;
 
             $propRep = $propertyData['property'] ?? null;

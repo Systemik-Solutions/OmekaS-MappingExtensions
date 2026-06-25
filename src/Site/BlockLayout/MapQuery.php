@@ -58,6 +58,11 @@ class MapQuery extends AbstractMap
             'form' => $form,
         ]);
 
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/sidebar-tabs', [
+            'data' => $data,
+            'form' => $form,
+        ]);
+
         $formHtml[] = $view->partial('common/block-layout/mapping-block-form/group-by-color', [
             'data' => $data,
             'form' => $form,
