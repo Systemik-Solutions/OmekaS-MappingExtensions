@@ -1,7 +1,7 @@
 <?php
 namespace MappingExtensions\CsvMapping;
 
-use CSVImport\MappingExtensions\AbstractMapping;
+use CSVImport\Mapping\AbstractMapping;
 use Laminas\View\Renderer\PhpRenderer;
 
 class CsvMapping extends AbstractMapping
