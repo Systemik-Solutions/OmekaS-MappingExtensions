@@ -137,16 +137,34 @@ class Module extends AbstractModule
 
     public function upgrade($oldVersion, $newVersion, ServiceLocatorInterface $services)
     {
-        if (Comparator::lessThan($oldVersion, '2.0.0-alpha')) {
+        $conn = $services->get('Omeka\Connection');
+        $schemaManager = $conn->getSchemaManager();
+        $hasMappingMarker = $schemaManager->tablesExist(['mapping_marker']);
+        $hasMappingFeature = $schemaManager->tablesExist(['mapping_feature']);
+
+        if (Comparator::lessThan($oldVersion, '2.0.0-alpha') && $hasMappingMarker && !$hasMappingFeature) {
             $this->upgradeToV2($services);
         }
         if (Comparator::lessThan($oldVersion, '2.0.0-alpha1')) {
-            $conn = $services->get('Omeka\Connection');
-            $conn->exec("UPDATE site_setting SET id = 'mapping_advanced_search_add_feature_presence' WHERE id = 'mapping_advanced_search_add_marker_presence'");
+            $hasOldSetting = (bool) $conn->fetchOne(
+                "SELECT COUNT(*) FROM site_setting WHERE id = 'mapping_advanced_search_add_marker_presence'"
+            );
+            $hasNewSetting = (bool) $conn->fetchOne(
+                "SELECT COUNT(*) FROM site_setting WHERE id = 'mapping_advanced_search_add_feature_presence'"
+            );
+            if ($hasOldSetting && !$hasNewSetting) {
+                $conn->exec("UPDATE site_setting SET id = 'mapping_advanced_search_add_feature_presence' WHERE id = 'mapping_advanced_search_add_marker_presence'");
+            }
         }
-        if (Comparator::lessThan($oldVersion, '2.1.0')) {
+        if (Comparator::lessThan($oldVersion, '2.1.0') && !$this->isMappingExtensionsVersion($oldVersion)) {
             $this->upgradeToV2_1($services);
         }
+    }
+
+    private function isMappingExtensionsVersion(string $version): bool
+    {
+        return Comparator::greaterThanOrEqualTo($version, '1.0.0')
+            && Comparator::lessThan($version, '2.0.0-alpha');
     }
 
     /**

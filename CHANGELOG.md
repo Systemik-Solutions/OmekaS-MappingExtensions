@@ -10,6 +10,7 @@ All notable changes to this module will be documented in this file.
 - **Sidebar content options:** Added tab content controls for media, selected properties, linked-from items, and external item links.
 
 ### Fixed
+- **Upgrade path:** Prevented inherited Mapping module schema migrations from running during Mapping Extensions 1.x upgrades when the current database already has the newer mapping tables.
 - **Timeline layout:** Fix the location of the timeline slider.
 
 
