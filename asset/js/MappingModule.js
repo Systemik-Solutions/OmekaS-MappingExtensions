@@ -190,11 +190,11 @@ const MappingModule = {
             const mapContainer = map._container;
             if (!mapContainer) return;
 
-            const container =
-                mapContainer.closest(".mapping-block") || mapContainer.parentNode;
-            if (!container) return;
-
-            let el = container.querySelector(".mapping-legend");
+            const blockContainer = mapContainer.closest(".mapping-block");
+            let el = mapContainer.querySelector(".mapping-legend");
+            if (!el && blockContainer) {
+                el = blockContainer.querySelector(".mapping-legend");
+            }
             if (!el) {
                 el = document.createElement("div");
                 el.className = "mapping-legend";
@@ -212,8 +212,11 @@ const MappingModule = {
                 el.style.fontSize = "17px";
                 el.style.maxHeight = "330px";
                 el.style.overflow = "auto";
-                container.appendChild(el);
             }
+            if (window.getComputedStyle(mapContainer).position === "static") {
+                mapContainer.style.position = "relative";
+            }
+            mapContainer.appendChild(el);
 
             const esc = (s) =>
                 String(s)
