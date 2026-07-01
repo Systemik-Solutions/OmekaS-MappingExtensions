@@ -751,9 +751,10 @@ class IndexController extends AbstractActionController
             return;
         }
 
-        $groupMode            = $blockData['group_by_control']['group-by-select'] ?? 'none';
-        $groupByPropertyValue = $blockData['group_by_control']['property_value'] ?? '';
-        $colorRows            = $blockData['node_colors']['rows'] ?? [];
+        $groupMode                = $blockData['group_by_control']['group-by-select'] ?? 'none';
+        $groupByPropertyValue     = $blockData['group_by_control']['property_value'] ?? '';
+        $showPropertyNameInLegend = !empty($blockData['group_by_control']['show_property_name_in_legend']);
+        $colorRows                = $blockData['node_colors']['rows'] ?? [];
 
         if ($groupMode === 'none' || $groupMode === '') {
             return;
@@ -883,7 +884,9 @@ class IndexController extends AbstractActionController
                     }
 
                     $legendMap[$key] = [
-                        'label' => sprintf('%s: %s', ucfirst($propLabel), $textLabel),
+                        'label' => $showPropertyNameInLegend
+                            ? sprintf('%s: %s', ucfirst($propLabel), $textLabel)
+                            : $textLabel,
                         'color' => $rowColor,
                     ];
                 }
@@ -910,7 +913,9 @@ class IndexController extends AbstractActionController
                 }
 
                 $legendMap[$key] = [
-                    'label' => sprintf('%s: %s', ucfirst($propLabel), $firstText),
+                    'label' => $showPropertyNameInLegend
+                        ? sprintf('%s: %s', ucfirst($propLabel), $firstText)
+                        : $firstText,
                     'color' => $color ?? $this->getAutoColor($key),
                 ];
             }

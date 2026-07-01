@@ -104,6 +104,7 @@ class BlockLayoutMapQueryForm extends Form
             'group_by_control' => [
                 'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',
                 'property_value'  => $data['group_by_control']['property_value'] ?? '',
+                'show_property_name_in_legend' => $data['group_by_control']['show_property_name_in_legend'] ?? '0',
             ],
             'node_colors' => [
                 'rows' => $data['node_colors']['rows'] ?? [],

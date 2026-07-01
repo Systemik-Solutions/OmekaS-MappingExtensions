@@ -57,6 +57,9 @@ $form->prepare();
             $scope.find('select.mp-group-by-property-value')
                 .closest('.field')
                 .toggle(mode === 'property_value');
+            $scope.find('input.mp-show-property-name-in-legend')
+                .closest('.field')
+                .toggle(mode === 'property_value');
 
             // Hide resource class/template selectors
             $scope.find('select.mp--rc').closest('.field').toggle(mode === 'resource_class');
