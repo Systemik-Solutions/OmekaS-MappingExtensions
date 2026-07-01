@@ -2,6 +2,7 @@
 
 namespace MappingExtensions\Site\BlockLayout;
 
+use Laminas\Form\Factory as FormFactory;
 use Laminas\View\Renderer\PhpRenderer;
 use MappingExtensions\Form\BlockLayoutMapQueryForm;
 use Omeka\Api\Representation\SiteRepresentation;
@@ -32,6 +33,9 @@ class MapQuery extends AbstractMap
     ) {
         $form = $this->formElementManager->get(BlockLayoutMapQueryForm::class);
         $data = $form->prepareBlockData($block ? $block->data() : []);
+
+        // Sidebar tabs call Form::prepare(), so all later collection names must be ready first.
+        $this->prepareNamespacedFieldsets($view, $form);
 
         $formHtml = [];
         $formHtml[] = $view->partial('common/block-layout/mapping-block-form/default-view', [
@@ -70,6 +74,30 @@ class MapQuery extends AbstractMap
         ]);
 
         return implode('', $formHtml);
+    }
+
+    private function prepareNamespacedFieldsets(PhpRenderer $view, BlockLayoutMapQueryForm $form): void
+    {
+        $services = $view->getHelperPluginManager()->getServiceLocator();
+        $formElementManager = $services->get('FormElementManager');
+        $factory = new FormFactory($formElementManager);
+
+        $sidebarTabs = $form->get('sidebar_tabs');
+        $sidebarTabs->setName('o:block[__blockIndex__][o:data][sidebar_tabs]');
+
+        $tabs = $sidebarTabs->get('tabs');
+        $tabs->setFormFactory($factory);
+        $tabs->setTargetElement($formElementManager->get(\MappingExtensions\Form\Fieldset\SidebarTabFieldset::class));
+
+        $groupFs = $form->get('group_by_control');
+        $groupFs->setName('o:block[__blockIndex__][o:data][group_by_control]');
+
+        $colorsFs = $form->get('node_colors');
+        $colorsFs->setName('o:block[__blockIndex__][o:data][node_colors]');
+
+        $rows = $colorsFs->get('rows');
+        $rows->setFormFactory($factory);
+        $rows->setTargetElement($formElementManager->get(\MappingExtensions\Form\Fieldset\NodeColorPairFieldset::class));
     }
 
     public function render(PhpRenderer $view, SitePageBlockRepresentation $block)
