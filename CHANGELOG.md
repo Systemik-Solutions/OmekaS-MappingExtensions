@@ -2,6 +2,15 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.1.1] - 2026-07-01
+
+### Added
+- **Group legend labels:** Added an option to show or hide the grouped property label in property-value legend labels. By default, legends now show only the grouped value.
+
+### Fixed
+- **Map by query group controls:** Fixed group-by and node color settings not saving after the sidebar tabs form was added to Map by query blocks.
+- **Sidebar tab properties:** Preserved the order of selected sidebar tab properties by switching them to ordered single-property rows.
+
 ## [1.1.0] - 2026-06-25
 
 ### Added
