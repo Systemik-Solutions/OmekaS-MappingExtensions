@@ -18,6 +18,63 @@ $tabs->setFormFactory($factory);
 $tabs->setTargetElement($formElementManager->get(\MappingExtensions\Form\Fieldset\SidebarTabFieldset::class));
 
 $form->prepare();
+
+$propertyBase = $formElementManager->get(\Omeka\Form\Element\PropertySelect::class);
+$propertyBase->setOptions([
+    'label' => $this->translate('Field'),
+    'empty_option' => '',
+    'term_as_value' => true,
+    'use_hidden_element' => true,
+]);
+$propertyBase->setAttributes([
+    'class' => 'chosen-select sidebar-tab-properties',
+    'data-placeholder' => $this->translate('Select a property...'),
+]);
+
+$renderPropertyRow = function ($tabName, $value = '') use ($propertyBase) {
+    $rowEl = clone $propertyBase;
+    $rowEl->setName($tabName . '[properties][]');
+    $rowEl->setValue($value);
+
+    return '<div class="sidebar-tab-property-row" style="display: flex;">'
+        . $this->formRow($rowEl)
+        . '<button type="button" class="button sidebar-tab-property-remove" '
+        . 'style="margin-left:.5rem;margin-top:1.2%;max-height:20px">&times;</button>'
+        . '</div>';
+};
+
+$renderProperties = function ($tabName, array $properties) use ($renderPropertyRow) {
+    if (!$properties) {
+        $properties = [''];
+    }
+
+    $html = '<div class="sidebar-tab-properties-wrapper"><div class="sidebar-tab-property-rows">';
+    foreach ($properties as $property) {
+        $html .= $renderPropertyRow($tabName, $property);
+    }
+
+    $templateHtml = $renderPropertyRow($tabName, '');
+    $html .= '<span class="sidebar-tab-property-template" data-template="'
+        . $this->escapeHtml($templateHtml)
+        . '" style="display:none;"></span>';
+    $html .= '</div><button type="button" class="button sidebar-tab-property-add" style="margin-top:.5rem;">+ '
+        . $this->escapeHtml($this->translate('Add property'))
+        . '</button></div>';
+
+    return $html;
+};
+
+$renderTab = function ($tabFieldset, array $tabData = []) use ($renderProperties) {
+    $tabName = $tabFieldset->getName();
+
+    return '<fieldset>'
+        . '<span class="sortable-handle sidebar-tab-handle" aria-hidden="true"></span>'
+        . $this->formRow($tabFieldset->get('label'))
+        . $this->formRow($tabFieldset->get('popup_content'))
+        . $renderProperties($tabName, $tabData['properties'] ?? [])
+        . $this->formRow($tabFieldset->get('remove'))
+        . '</fieldset>';
+};
 ?>
 
 <a href="#" class="collapse"><h4><?= $this->translate('Sidebar tabs'); ?></h4></a>
@@ -26,7 +83,16 @@ $form->prepare();
     <?= $this->formRow($sidebarTabs->get('popup_enabled')); ?>
 
     <div class="sidebar-tabs-rows">
-        <?= $this->formCollection($tabs, false); ?>
+        <?php foreach ($tabs->getIterator() as $tabIndex => $tabFieldset): ?>
+            <?= $renderTab($tabFieldset, $data['sidebar_tabs']['tabs'][$tabIndex] ?? []); ?>
+        <?php endforeach; ?>
+        <?php
+        $templateTab = $tabs->getTemplateElement();
+        $templateHtml = $renderTab($templateTab, []);
+        ?>
+        <span class="sidebar-tab-template"
+            data-template="<?= $this->escapeHtml($templateHtml); ?>"
+            style="display:none;"></span>
     </div>
 
     <button type="button" class="button sidebar-tab-add">
@@ -45,7 +111,7 @@ $form->prepare();
                     $select.chosen({
                         width: '100%',
                         include_group_label_in_selected: true,
-                        placeholder_text_multiple: $select.data('placeholder') || 'Select one or more properties...'
+                        placeholder_text_single: $select.data('placeholder') || 'Select a property...'
                     });
                     $select.data('sidebarTabsChosenInit', 1);
                 }
@@ -78,7 +144,7 @@ $form->prepare();
         }
 
         function addTab($scope) {
-            const $template = $scope.find('span[data-template]').last();
+            const $template = $scope.find('span.sidebar-tab-template').last();
             if (!$template.length) return;
 
             const html = ($template.attr('data-template') || '')
@@ -95,44 +161,14 @@ $form->prepare();
         }
 
         function removeTab($button) {
-            const $scope = $button.closest('.sidebar-tabs-settings');
-            const name = $button.attr('name') || '';
-            const match = name.match(/\[tabs\]\[([^\]]+)\]\[remove\]/);
-            let tabIndex = match ? match[1] : tabIndexFromName(name);
-
-            if (tabIndex === null) {
-                const indexedField = $button.closest('fieldset').find('[name*="[tabs]["]').first();
-                tabIndex = tabIndexFromName(indexedField.attr('name'));
-            }
-
-            if (tabIndex === null) {
-                $button.closest('fieldset').remove();
-                return;
-            }
-
-            const tabSelector = '[name*="[tabs][' + tabIndex + ']"]';
-            const $tabFields = $scope.find(tabSelector);
             const $rowFieldset = $button.closest('fieldset');
-
-            $tabFields.filter('select.sidebar-tab-properties').each(function() {
+            $rowFieldset.find('select.sidebar-tab-properties').each(function() {
                 const $select = $(this);
                 if ($select.data('chosen')) {
                     $select.chosen('destroy');
                 }
             });
-
-            $tabFields.each(function() {
-                const $field = $(this).closest('.field');
-                if ($field.length) {
-                    $field.remove();
-                } else {
-                    $(this).remove();
-                }
-            });
-
-            if ($rowFieldset.length && !$rowFieldset.find('[name]').length) {
-                $rowFieldset.remove();
-            }
+            $rowFieldset.remove();
         }
 
         function applyVisibility($scope) {
@@ -160,10 +196,36 @@ $form->prepare();
                 const $select = $(this);
                 const tabIndex = tabIndexFromName($select.attr('name'));
                 const showProperties = tabUsesProperties($scope, tabIndex);
-                const $field = $select.closest('.field');
-                ($field.length ? $field : $select.parent()).toggle(showProperties);
+                const $wrapper = $select.closest('.sidebar-tab-properties-wrapper');
+                ($wrapper.length ? $wrapper : $select.closest('.field')).toggle(showProperties);
                 $select.next('.chosen-container').toggle(showProperties);
             });
+        }
+
+        function addPropertyRow($button) {
+            const $wrapper = $button.closest('.sidebar-tab-properties-wrapper');
+            const $template = $wrapper.find('.sidebar-tab-property-template').first();
+            if (!$template.length) return;
+
+            const tabIndex = tabIndexFromName($button.closest('fieldset').find('[name*="[tabs]["]').first().attr('name'));
+            const html = ($template.attr('data-template') || '')
+                .replace(/__blockIndex__/g, String(getBlockIndex($button.closest('.sidebar-tabs-settings'))))
+                .replace(/__index__/g, String(tabIndex));
+
+            if (!html) return;
+
+            const $row = $(html);
+            $row.insertBefore($template);
+            initChosen($row);
+        }
+
+        function removePropertyRow($button) {
+            const $row = $button.closest('.sidebar-tab-property-row');
+            const $select = $row.find('select.sidebar-tab-properties');
+            if ($select.data('chosen')) {
+                $select.chosen('destroy');
+            }
+            $row.remove();
         }
 
         function initSortable($scope) {
@@ -195,6 +257,16 @@ $form->prepare();
             $scope.on('click.sidebarTabs', '.sidebar-tab-remove', function(e) {
                 e.preventDefault();
                 removeTab($(this));
+            });
+
+            $scope.on('click.sidebarTabs', '.sidebar-tab-property-add', function(e) {
+                e.preventDefault();
+                addPropertyRow($(this));
+            });
+
+            $scope.on('click.sidebarTabs', '.sidebar-tab-property-remove', function(e) {
+                e.preventDefault();
+                removePropertyRow($(this));
             });
 
             $scope.on('change.sidebarTabs', 'input.sidebar-tabs-enabled[type="checkbox"]', function() {
