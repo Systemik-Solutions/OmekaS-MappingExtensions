@@ -119,10 +119,10 @@ class Map extends AbstractMap
             foreach ($itemIds as $itemId) {
                 if (!$useLinked) {
                     // Original behavior: use the original item for timeline
-                    $event = $this->getTimelineEvent($itemId, $data['timeline']['data_type_properties'], $view);
-                    if ($event) {
-                        $events[] = $event;
-                    }
+                    $events = array_merge(
+                        $events,
+                        $this->getTimelineEvents($itemId, $data['timeline']['data_type_properties'], $view) ?: []
+                    );
                     continue;
                 }
 
@@ -131,10 +131,10 @@ class Map extends AbstractMap
 
                 // Build events from linked items (deduped)
                 foreach (array_keys($linkedIds) as $lid) {
-                    $event = $this->getTimelineEvent($lid, $data['timeline']['data_type_properties'], $view, false);
-                    if ($event) {
-                        $events[] = $event;
-                    }
+                    $events = array_merge(
+                        $events,
+                        $this->getTimelineEvents($lid, $data['timeline']['data_type_properties'], $view, false) ?: []
+                    );
                 }
             }
         }

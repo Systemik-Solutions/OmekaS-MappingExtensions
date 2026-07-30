@@ -249,23 +249,30 @@ function MappingBlock(mapDiv, timelineDiv) {
     setDefaultView();
 
     if (timelineDiv && timelineDiv.length) {
+        const timelineEventResourceId = function(event) {
+            return event.resource_id || event.unique_id;
+        };
+
         timeline = new TL.Timeline(
             timelineDiv[0],
             timelineDiv.data('data'),
             timelineDiv.data('options')
         )
         timeline.on('change', function(e) {
-            if ($.isNumeric(e.unique_id)) {
+            const currentEvent = this.config.event_dict[e.unique_id];
+            if (currentEvent) {
                 // Changed to an event slide. Set the timeline event view.
                 map.removeLayer(features);
                 $.each(featuresByResource, function(resourceId, itemFeatures) {
                     map.removeLayer(itemFeatures);
                 });
                 // Changed to an event slide. Set the event's map view.
-                const currentEvent = this.config.event_dict[e.unique_id];
                 const currentEventStart = currentEvent.start_date.data.date_obj;
                 const currentEventEnd = ('undefined' === typeof currentEvent.end_date) ? null : currentEvent.end_date.data.date_obj;
-                const eventFeatures = featuresByResource[currentEvent.unique_id];
+                const eventFeatures = featuresByResource[timelineEventResourceId(currentEvent)];
+                if (!eventFeatures) {
+                    return;
+                }
                 // features.addLayer(eventFeatures);
                 map.addLayer(eventFeatures);
                 if ($.isNumeric(mapData['timeline']['fly_to'])) {
@@ -274,18 +281,22 @@ function MappingBlock(mapDiv, timelineDiv) {
                     if (mapData['timeline']['show_contemporaneous']) {
                         // Show all event features that are contemporaneous with the current event.
                         $.each(this.config.event_dict, function(index, event) {
-                            if ($.isNumeric(index) && (index != currentEvent.unique_id)) {
+                            if (index != currentEvent.unique_id) {
                                 const eventStart = event.start_date.data.date_obj;
                                 const eventEnd = ('undefined' === typeof event.end_date) ? null : event.end_date.data.date_obj;
+                                const contemporaneousFeatures = featuresByResource[timelineEventResourceId(event)];
+                                if (!contemporaneousFeatures) {
+                                    return;
+                                }
                                 // For a timeline using intervals, a portion of this event
                                 // must fall within the interval of the current event.
                                 if (currentEventEnd && eventStart <= currentEventEnd && eventEnd >= currentEventStart) {
-                                    features.addLayer(featuresByResource[event.unique_id])
+                                    features.addLayer(contemporaneousFeatures)
                                 }
                                 // For a timeline using timestamps, this event must have
                                 // the same timestamp as the current event.
                                 if (!currentEventEnd && currentEventStart.getTime() == eventStart.getTime()) {
-                                    features.addLayer(featuresByResource[event.unique_id])
+                                    features.addLayer(contemporaneousFeatures)
                                 }
                             }
                         });

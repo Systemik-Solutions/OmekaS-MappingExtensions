@@ -84,6 +84,15 @@ groups. This makes it easier to distinguish categories of items at a glance.
 - Configure Group Colors (Optional): After selecting a grouping option, you can assign specific colors to each group. 
 If no colors are specified, the module applies a default sequence of colors automatically.
 
+### Multiple Timeline Dates and Intervals
+
+When an item contains multiple values for the temporal property configured by the map timeline, Mapping Extensions
+creates a separate timeline event for every matching value. This applies to both fixed timestamps and temporal
+intervals; the timeline is not limited to the first value on the item.
+
+All timeline events created from the same item remain linked to that item's map feature. Selecting any of its dates or
+intervals in the timeline therefore highlights and moves the map to the same marker.
+
 ### Journey Maps
 
 The Journey Map block is a new visualization mode introduced by Mapping Extensions. It allows you to display 

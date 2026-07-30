@@ -121,7 +121,7 @@ abstract class AbstractMap extends AbstractBlockLayout
     }
 
     /**
-     * Get a timeline event.
+     * Get the first timeline event for an item.
      *
      * @see https://timeline.knightlab.com/docs/json-format.html#json-slide
      * @param int $itemId
@@ -130,6 +130,20 @@ abstract class AbstractMap extends AbstractBlockLayout
      */
     public function getTimelineEvent($itemId, array $dataTypeProperties, $view, $has_features = true)
     {
+        $events = $this->getTimelineEvents($itemId, $dataTypeProperties, $view, $has_features);
+        return $events ? reset($events) : null;
+    }
+
+    /**
+     * Get all timeline events for an item.
+     *
+     * @see https://timeline.knightlab.com/docs/json-format.html#json-slide
+     * @param int $itemId
+     * @param array $dataTypeProperties
+     * @return array
+     */
+    public function getTimelineEvents($itemId, array $dataTypeProperties, $view, $has_features = true)
+    {
         $query = [
             'id' => $itemId,
             'has_features' => $has_features,
@@ -137,11 +151,10 @@ abstract class AbstractMap extends AbstractBlockLayout
         $item = $view->api()->searchOne('items', $query)->getContent();
         if (!$item) {
             // This item has no features.
-            return;
+            return [];
         }
-        $property = null;
-        $dataType = null;
-        $value = null;
+
+        $values = [];
         foreach ($dataTypeProperties as $dataTypeProperty) {
             $dataTypeProperty = explode(':', $dataTypeProperty);
             try {
@@ -151,32 +164,33 @@ abstract class AbstractMap extends AbstractBlockLayout
                 continue;
             }
             $dataType = sprintf('%s:%s', $dataTypeProperty[0], $dataTypeProperty[1]);
-            $value = $item->value($property->term(), ['type' => $dataType]);
-            if ($value) {
-                // Set only the first matching numeric value.
-                break;
+            $propertyValues = $item->value($property->term(), ['type' => $dataType, 'all' => true]) ?: [];
+            foreach ($propertyValues as $value) {
+                $values[] = [
+                    'data_type' => $dataType,
+                    'value' => $value,
+                ];
             }
         }
-        if (!$value) {
+        if (!$values) {
             // This item has no numeric values.
-            return;
+            return [];
         }
 
-        // Set the unique ID and "text" object.
+        // Set the "text" and "media" objects.
         $title = $item->value('dcterms:title');
         $description = $item->value('dcterms:description');
-        $event = [
-            'unique_id' => (string) $item->id(), // must cast to string
+        $baseEvent = [
+            'resource_id' => (string) $item->id(),
             'text' => [
                 'headline' => $item->link($item->displayTitle(null, $view->lang()), null, ['target' => '_blank']),
                 'text' => $item->displayDescription(),
             ],
         ];
 
-        // Set the "media" object.
         $media = $item->primaryMedia();
         if ($media) {
-            $event['media'] = [
+            $baseEvent['media'] = [
                 'url' => $media->thumbnailUrl('large'),
                 'thumbnail' => $media->thumbnailUrl('medium'),
                 'link' => $item->url(),
@@ -184,7 +198,24 @@ abstract class AbstractMap extends AbstractBlockLayout
             ];
         }
 
-        // Set the start and end "date" objects.
+        $events = [];
+        foreach ($values as $index => $timelineValue) {
+            $event = $baseEvent;
+            $event['unique_id'] = 0 === $index
+                ? (string) $item->id()
+                : sprintf('%s-%s', $item->id(), $index);
+
+            $event = $this->setTimelineEventDates($event, $timelineValue['data_type'], $timelineValue['value']);
+            if ($event) {
+                $events[] = $event;
+            }
+        }
+
+        return $events;
+    }
+
+    private function setTimelineEventDates(array $event, $dataType, $value)
+    {
         if ('numeric:timestamp' === $dataType) {
             $dateTime = Timestamp::getDateTimeFromValue($value->value());
             $event['start_date'] = [
@@ -196,7 +227,11 @@ abstract class AbstractMap extends AbstractBlockLayout
                 'second' => $dateTime['second'],
             ];
         } elseif ('numeric:interval' === $dataType) {
-            [$intervalStart, $intervalEnd] = explode('/', $value->value());
+            $interval = explode('/', $value->value());
+            if (2 !== count($interval)) {
+                return null;
+            }
+            [$intervalStart, $intervalEnd] = $interval;
             $dateTimeStart = Timestamp::getDateTimeFromValue($intervalStart);
             $event['start_date'] = [
                 'year' => $dateTimeStart['year'],
@@ -220,7 +255,10 @@ abstract class AbstractMap extends AbstractBlockLayout
                 $dateTimeStart['date']->format($dateTimeStart['format_render']),
                 $dateTimeEnd['date']->format($dateTimeEnd['format_render'])
             );
+        } else {
+            return null;
         }
+
         return $event;
     }
 
