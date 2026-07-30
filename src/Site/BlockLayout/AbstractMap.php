@@ -87,10 +87,21 @@ abstract class AbstractMap extends AbstractBlockLayout
      */
     public function getTimelineOptions(array $data)
     {
-        return [
+        $options = [
             'debug' => false,
             'timenav_position' => 'bottom',
         ];
+
+        $markerRows = (int) ($data['timeline']['marker_rows'] ?? 4);
+        if (in_array($markerRows, [4, 6, 8, 10], true)) {
+            // TimelineJS currently fits four marker rows in its default
+            // navigation height. Each additional row needs 30 pixels.
+            $timenavHeight = 175 + (($markerRows - 4) * 30);
+            $options['timenav_height'] = $timenavHeight;
+            $options['timenav_height_min'] = $timenavHeight;
+        }
+
+        return $options;
     }
 
     /**

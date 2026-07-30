@@ -69,6 +69,20 @@ class TimelineFieldset extends Fieldset
                 ],
             ],
         ]);
+        $this->add([
+            'type' => 'select',
+            'name' => 'o:block[__blockIndex__][o:data][timeline][marker_rows]',
+            'options' => [
+                'label' => 'Maximum timeline marker rows', // @translate
+                'info' => 'Set the maximum number of rows available for timeline markers. More rows make the timeline navigation taller and reduce marker overlap.', // @translate
+                'value_options' => [
+                    '4' => '4', // @translate
+                    '6' => '6', // @translate
+                    '8' => '8', // @translate
+                    '10' => '10', // @translate
+                ],
+            ],
+        ]);
         if (class_exists(NumericPropertySelect::class)) {
             $this->add([
                 'type' => NumericPropertySelect::class,
@@ -97,6 +111,7 @@ class TimelineFieldset extends Fieldset
                 'fly_to' => null,
                 'show_contemporaneous' => null,
                 'timenav_position' => null,
+                'marker_rows' => '4',
                 'data_type_properties' => null,
             ],
         ];
@@ -115,6 +130,11 @@ class TimelineFieldset extends Fieldset
         }
         if (isset($rawData['timeline']['timenav_position']) && in_array($rawData['timeline']['timenav_position'], ['full_width_below', 'full_width_above'])) {
             $data['timeline']['timenav_position'] = $rawData['timeline']['timenav_position'];
+        }
+        if (isset($rawData['timeline']['marker_rows'])
+            && in_array((string) $rawData['timeline']['marker_rows'], ['4', '6', '8', '10'], true)
+        ) {
+            $data['timeline']['marker_rows'] = (string) $rawData['timeline']['marker_rows'];
         }
         if (isset($rawData['timeline']['data_type_properties'])) {
             // Anticipate future use of multiple numeric properties per
