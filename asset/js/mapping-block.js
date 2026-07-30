@@ -249,6 +249,7 @@ function MappingBlock(mapDiv, timelineDiv) {
     setDefaultView();
 
     if (timelineDiv && timelineDiv.length) {
+        const timelineFeatures = L.featureGroup().addTo(map);
         const timelineEventResourceId = function(event) {
             return event.resource_id || event.unique_id;
         };
@@ -260,12 +261,10 @@ function MappingBlock(mapDiv, timelineDiv) {
         )
         timeline.on('change', function(e) {
             const currentEvent = this.config.event_dict[e.unique_id];
-            if (currentEvent) {
+            if (currentEvent && currentEvent.start_date) {
                 // Changed to an event slide. Set the timeline event view.
                 map.removeLayer(features);
-                $.each(featuresByResource, function(resourceId, itemFeatures) {
-                    map.removeLayer(itemFeatures);
-                });
+                timelineFeatures.clearLayers();
                 // Changed to an event slide. Set the event's map view.
                 const currentEventStart = currentEvent.start_date.data.date_obj;
                 const currentEventEnd = ('undefined' === typeof currentEvent.end_date) ? null : currentEvent.end_date.data.date_obj;
@@ -273,15 +272,14 @@ function MappingBlock(mapDiv, timelineDiv) {
                 if (!eventFeatures) {
                     return;
                 }
-                // features.addLayer(eventFeatures);
-                map.addLayer(eventFeatures);
+                timelineFeatures.addLayer(eventFeatures);
                 if ($.isNumeric(mapData['timeline']['fly_to'])) {
                     map.flyToBounds(eventFeatures.getBounds(), {maxZoom: parseInt(mapData['timeline']['fly_to'])});
                 } else {
                     if (mapData['timeline']['show_contemporaneous']) {
                         // Show all event features that are contemporaneous with the current event.
                         $.each(this.config.event_dict, function(index, event) {
-                            if (index != currentEvent.unique_id) {
+                            if (index != currentEvent.unique_id && event.start_date) {
                                 const eventStart = event.start_date.data.date_obj;
                                 const eventEnd = ('undefined' === typeof event.end_date) ? null : event.end_date.data.date_obj;
                                 const contemporaneousFeatures = featuresByResource[timelineEventResourceId(event)];
@@ -291,12 +289,12 @@ function MappingBlock(mapDiv, timelineDiv) {
                                 // For a timeline using intervals, a portion of this event
                                 // must fall within the interval of the current event.
                                 if (currentEventEnd && eventStart <= currentEventEnd && eventEnd >= currentEventStart) {
-                                    features.addLayer(contemporaneousFeatures)
+                                    timelineFeatures.addLayer(contemporaneousFeatures)
                                 }
                                 // For a timeline using timestamps, this event must have
                                 // the same timestamp as the current event.
                                 if (!currentEventEnd && currentEventStart.getTime() == eventStart.getTime()) {
-                                    features.addLayer(contemporaneousFeatures)
+                                    timelineFeatures.addLayer(contemporaneousFeatures)
                                 }
                             }
                         });
@@ -305,6 +303,7 @@ function MappingBlock(mapDiv, timelineDiv) {
                 }
             } else {
                 // Changed to the title slide. Set the default map view.
+                timelineFeatures.clearLayers();
                 map.addLayer(features);
                 setDefaultView();
             }

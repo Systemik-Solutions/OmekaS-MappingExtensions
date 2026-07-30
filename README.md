@@ -93,8 +93,12 @@ intervals; the timeline is not limited to the first value on the item.
 All timeline events created from the same item remain linked to that item's map feature. Selecting any of its dates or
 intervals in the timeline therefore highlights and moves the map to the same marker.
 
-Use the "Timeline marker rows" block setting to provide 4, 6, 8, or 10 rows for densely grouped events. Increasing the
-number of rows makes the timeline navigation taller and reduces marker overlap. The default is 4 rows.
+When "Show contemporaneous events?" is enabled and "Fly to" uses the default view, selecting an interval also displays
+the map features for every item with at least one overlapping interval. The comparison checks all interval values on
+each item, not only the first value.
+
+Use the "Maximum timeline marker rows" block setting to provide 4, 6, 8, or 10 rows for densely grouped events.
+Increasing the number of rows makes the timeline navigation taller and reduces marker overlap. The default is 4 rows.
 
 ### Journey Maps
 
