@@ -2,6 +2,15 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.1.2] - 2026-07-30
+
+### Added
+- **Timeline marker rows:** Added a block setting for Map by attachments and Map by query to configure a maximum of 4, 6, 8, or 10 timeline marker rows. The default is 4 rows.
+- **Multiple temporal values:** Added every timestamp or interval value from an item to the timeline as a separate event while keeping each event linked to the same item and map feature.
+
+### Fixed
+- **Contemporaneous events:** Fixed overlapping interval markers not appearing on the map and ensured the comparison checks all interval values.
+
 ## [1.1.1] - 2026-07-01
 
 ### Added
