@@ -9,6 +9,14 @@ class BlockLayoutMapQueryForm extends Form
     public function init()
     {
         $this->add([
+            'type' => 'checkbox',
+            'name' => 'o:block[__blockIndex__][o:data][show_resource_template_filter]',
+            'options' => [
+                'label' => 'Show resource template filters', // @translate
+                'info' => 'Let visitors filter mapped items by their resource template.', // @translate
+            ],
+        ]);
+        $this->add([
             'type' => Fieldset\DefaultViewFieldset::class,
             'name' => 'default_view',
         ]);
@@ -51,6 +59,7 @@ class BlockLayoutMapQueryForm extends Form
         );
 
         $data = array_merge($data, [
+            'show_resource_template_filter' => !array_key_exists('show_resource_template_filter', $rawData) || !empty($rawData['show_resource_template_filter']),
             'map_linked_items'         => !empty($rawData['map_linked_items']) ? '1' : '0',
             'linked_properties' => is_array($rawData['linked_properties'] ?? null)
                 ? array_values($rawData['linked_properties'])
@@ -76,6 +85,7 @@ class BlockLayoutMapQueryForm extends Form
         ]);
 
         $this->setData([
+            'o:block[__blockIndex__][o:data][show_resource_template_filter]' => $data['show_resource_template_filter'],
             'default_view' => [
                 'o:block[__blockIndex__][o:data][basemap_provider]' => $data['basemap_provider'],
                 'o:block[__blockIndex__][o:data][min_zoom]' => $data['min_zoom'],
@@ -86,6 +96,10 @@ class BlockLayoutMapQueryForm extends Form
                 'o:block[__blockIndex__][o:data][overlay_mode]' => $data['overlay_mode'],
             ],
             'timeline' => [
+                'o:block[__blockIndex__][o:data][timeline][background_color]' => $data['timeline']['background_color'],
+                'o:block[__blockIndex__][o:data][timeline][text_color]' => $data['timeline']['text_color'],
+                'o:block[__blockIndex__][o:data][timeline][font_family]' => $data['timeline']['font_family'],
+                'o:block[__blockIndex__][o:data][timeline][layout]' => $data['timeline']['layout'],
                 'o:block[__blockIndex__][o:data][timeline][title_headline]' => $data['timeline']['title_headline'],
                 'o:block[__blockIndex__][o:data][timeline][title_text]' => $data['timeline']['title_text'],
                 'o:block[__blockIndex__][o:data][timeline][fly_to]' => $data['timeline']['fly_to'],

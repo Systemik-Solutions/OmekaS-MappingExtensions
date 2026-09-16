@@ -54,7 +54,7 @@ class TimelineFieldset extends Fieldset
             'name' => 'o:block[__blockIndex__][o:data][timeline][show_contemporaneous]',
             'options' => [
                 'label' => 'Show contemporaneous events?', // @translate
-                'info' => 'Check this if you want to show all events on the map that exist in the same time period as the current event (default view only).', // @translate
+                'info' => 'Check this if you want to show all events on the map that overlap the current event. This also applies when a Fly to zoom is selected.', // @translate
             ],
         ]);
         $this->add([
@@ -64,11 +64,44 @@ class TimelineFieldset extends Fieldset
                 'label' => 'Timeline navigation position', // @translate
                 'info' => 'Select the position of the timeline navigation.', // @translate
                 'value_options' => [
-                    'full_width_below' => 'Full width, below story slider and map', // @translate
-                    'full_width_above' => 'Full width, above story slider and map', // @translate
+                    'full_width_below' => 'Below timeline slides', // @translate
+                    'full_width_above' => 'Above timeline slides', // @translate
                 ],
             ],
         ]);
+        $this->add([
+            'type' => 'select',
+            'name' => 'o:block[__blockIndex__][o:data][timeline][layout]',
+            'options' => [
+                'label' => 'Timeline layout', // @translate
+                'value_options' => [
+                    'below' => 'Full width below map', // @translate
+                    'beside' => 'Beside map', // @translate
+                ],
+            ],
+        ]);
+        $this->add([
+            'type' => 'text',
+            'name' => 'o:block[__blockIndex__][o:data][timeline][font_family]',
+            'options' => [
+                'label' => 'Timeline font family', // @translate
+                'info' => 'Leave blank to keep the default timeline font. Otherwise enter a font stack, for example Georgia, serif. Fonts must already be available on the site.', // @translate
+            ],
+        ]);
+        foreach ([
+            'text_color' => 'Timeline text colour', // @translate
+            'background_color' => 'Timeline background colour', // @translate
+        ] as $key => $label) {
+            $this->add([
+                'type' => 'text',
+                'name' => "o:block[__blockIndex__][o:data][timeline][$key]",
+                'options' => [
+                    'label' => $label,
+                    'info' => 'Optional hex colour, for example #333333. Leave blank to keep the default timeline colours.', // @translate
+                ],
+                'attributes' => ['placeholder' => '#333333'],
+            ]);
+        }
         $this->add([
             'type' => 'select',
             'name' => 'o:block[__blockIndex__][o:data][timeline][marker_rows]',
@@ -110,7 +143,11 @@ class TimelineFieldset extends Fieldset
                 'title_text' => null,
                 'fly_to' => null,
                 'show_contemporaneous' => null,
-                'timenav_position' => null,
+                'timenav_position' => 'full_width_below',
+                'layout' => 'below',
+                'font_family' => '',
+                'text_color' => '',
+                'background_color' => '',
                 'marker_rows' => '4',
                 'data_type_properties' => null,
             ],
@@ -130,6 +167,20 @@ class TimelineFieldset extends Fieldset
         }
         if (isset($rawData['timeline']['timenav_position']) && in_array($rawData['timeline']['timenav_position'], ['full_width_below', 'full_width_above'])) {
             $data['timeline']['timenav_position'] = $rawData['timeline']['timenav_position'];
+        }
+        if (in_array($rawData['timeline']['layout'] ?? '', ['below', 'beside'], true)) {
+            $data['timeline']['layout'] = $rawData['timeline']['layout'];
+        }
+        $font = $rawData['timeline']['font_family'] ?? '';
+        // Only accept font names and stacks, never arbitrary CSS declarations.
+        if (is_string($font) && strlen($font) <= 255 && preg_match('/^[\p{L}\p{N} ,\'"_-]*$/u', $font)) {
+            $data['timeline']['font_family'] = trim($font);
+        }
+        foreach (['text_color', 'background_color'] as $key) {
+            $color = $rawData['timeline'][$key] ?? '';
+            if (is_string($color) && preg_match('/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/i', $color)) {
+                $data['timeline'][$key] = $color;
+            }
         }
         if (isset($rawData['timeline']['marker_rows'])
             && in_array((string) $rawData['timeline']['marker_rows'], ['4', '6', '8', '10'], true)

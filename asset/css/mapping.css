@@ -403,3 +403,157 @@
     padding-right: 8px;
     padding-top: 4px;
 }
+
+/* Compact filter panel anchored inside the map, including fullscreen mode. */
+.mapping-block .mapping-map {
+    container-type: inline-size;
+}
+.mapping-block .mapping-template-filter {
+    min-width: 0;
+    position: absolute;
+    right: 12px;
+    bottom: 24px;
+    z-index: 801;
+    box-sizing: border-box;
+    width: 300px;
+    max-width: calc(100% - 24px);
+    max-height: calc(100% - 80px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid #e2e6e9;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 4px 18px rgb(20 32 45 / 7%);
+    font-family: var(--mapping-filter-font, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+    color: #24313c;
+}
+.mapping-block .mapping-template-filter [hidden],
+.mapping-block .mapping-template-filter[hidden] {
+    display: none;
+}
+.mapping-block .mapping-template-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.mapping-block .mapping-template-header h3 {
+    margin: 0;
+    padding: 0;
+    font-family: inherit !important;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: inherit;
+}
+.mapping-block .mapping-template-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.mapping-block .mapping-template-filter button {
+    min-height: 32px;
+    margin: 0;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    box-shadow: none;
+    font-family: inherit !important;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+    transition: box-shadow .15s ease, background-color .15s ease;
+}
+.mapping-block .mapping-template-actions button {
+    background: #f0f2f4;
+    border-color: #e2e6e9;
+    color: #24313c;
+}
+.mapping-block .mapping-template-actions button:hover {
+    background: #e4e9ed;
+}
+.mapping-block .mapping-template-body {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #edf0f2;
+}
+.mapping-block .mapping-template-label {
+    margin: 0 0 6px;
+    font-family: inherit !important;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #56636e;
+}
+.mapping-block .mapping-template-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.mapping-block .mapping-template-buttons button {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: left;
+    background: var(--mapping-category-color, #6699ff);
+    color: var(--mapping-category-text, #000);
+    border-color: rgb(0 0 0 / 12%);
+}
+.mapping-block .mapping-template-buttons button[aria-pressed="false"] {
+    background: #d4d4d4;
+    color: #222;
+}
+.mapping-block .mapping-template-buttons button:hover {
+    box-shadow: 0 3px 9px rgb(20 32 45 / 22%);
+}
+.mapping-block .mapping-template-filter button:focus-visible {
+    outline: 3px solid #24313c;
+    outline-offset: 3px;
+}
+.mapping-block .mapping-template-empty {
+    margin: 8px 0 0;
+    font-size: 12px;
+}
+@media screen and (max-width: 480px) {
+    .mapping-block .mapping-template-filter {
+        padding: 10px;
+    }
+    .mapping-block .mapping-template-header h3 {
+        font-size: 15px;
+    }
+    .mapping-block .mapping-template-filter button {
+        padding: 5px 8px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mapping-block .mapping-template-filter button {
+        transition: none;
+    }
+}
+
+.mapping-block .mapping-template-filter.is-collapsed {
+    width: max-content;
+}
+.mapping-block .mapping-template-body {
+    max-height: 180px;
+    overflow-y: auto;
+    padding-bottom: 4px;
+}
+
+@container (max-width: 600px) {
+    .mapping-map:has(.mapping-template-filter:not([hidden])) .mapping-legend {
+        top: 10px;
+        bottom: auto !important;
+        left: 54px !important;
+        max-width: calc(100% - 110px) !important;
+        max-height: 100px !important;
+    }
+}

@@ -124,12 +124,24 @@ class IndexController extends AbstractActionController
                 $featureArray,
                 $color,
                 $displayItem->url(),
+                $this->getResourceTemplateMetadata($displayItem, $color),
             ];
 
             $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
         }
 
         return $this->buildFeaturesJsonResponse($features, $legendMap);
+    }
+
+    /** Metadata for the displayed item, including when its geometry is borrowed. */
+    private function getResourceTemplateMetadata(ItemRepresentation $item, ?string $color): array
+    {
+        $template = $item->resourceTemplate();
+        return [
+            'id' => $template ? $template->id() : 0,
+            'label' => $template ? $template->label() : null,
+            'color' => $color ?: self::DEFAULT_COLOR,
+        ];
     }
 
     /**
@@ -299,6 +311,7 @@ class IndexController extends AbstractActionController
                     $featureArray,
                     $color,
                     $displayItem->url(),
+                    $this->getResourceTemplateMetadata($displayItem, $color),
                 ];
 
                 $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);

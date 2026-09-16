@@ -5,27 +5,43 @@ if ($isTimeline) {
     $this->headLink()->appendStylesheet($this->assetUrl('css/timeline.css', 'MappingExtensions'));
 }
 
-// Set the classes for the mapping block container div.
 $classes = ['mapping-block'];
+$timelineStyles = [];
+$filterId = 'mapping-template-options-' . uniqid();
 if ($isTimeline) {
     $classes[] = 'timeline';
-    $classes[] = $data['timeline']['timenav_position'];
-    if ('full_width_below' === $data['timeline']['timenav_position']) {
-        $classes[] = 'timenav-full-width-below';
-    }
-    if ('full_width_above' === $data['timeline']['timenav_position']) {
-        $classes[] = 'timenav-full-width-above';
+    $classes[] = 'timeline-' . ($data['timeline']['layout'] ?? 'below');
+    foreach (['font_family' => 'font', 'text_color' => 'text', 'background_color' => 'background'] as $key => $variable) {
+        if (!empty($data['timeline'][$key])) {
+            $classes[] = 'timeline-custom-' . $variable;
+            $timelineStyles[] = '--mapping-timeline-' . $variable . ':' . $data['timeline'][$key];
+        }
     }
 }
-
-$legendId = 'mapping-legend-' . uniqid();
 ?>
-<div class="<?php echo implode(' ', $classes); ?>">
-
-    <?php if ($isTimeline): ?>
-        <div class='mapping-timeline' style="height: 500px"
-            data-data="<?php echo $this->escapeHtml(json_encode($timelineData)); ?>"
-            data-options="<?php echo $this->escapeHtml(json_encode($timelineOptions)); ?>"></div>
+<div class="<?php echo $this->escapeHtml(implode(' ', $classes)); ?>"
+    style="<?php echo $this->escapeHtml(implode(';', $timelineStyles)); ?>">
+    <?php if ($data['show_resource_template_filter'] ?? false): ?>
+    <section class="mapping-template-filter" hidden
+        aria-label="<?php echo $this->escapeHtml($this->translate('Map filters')); ?>"
+        data-no-template="<?php echo $this->escapeHtml($this->translate('No resource template')); ?>">
+        <div class="mapping-template-header">
+            <h3><?php echo $this->translate('Filters'); ?></h3>
+            <div class="mapping-template-actions">
+                <button type="button" class="mapping-template-reset" data-template-id="all"><?php echo $this->translate('Reset Filters'); ?></button>
+                <button type="button" class="mapping-template-toggle" aria-expanded="true"
+                    aria-controls="<?php echo $filterId; ?>"
+                    data-show-label="<?php echo $this->escapeHtml($this->translate('Show')); ?>"
+                    data-hide-label="<?php echo $this->escapeHtml($this->translate('Hide')); ?>"><?php echo $this->translate('Hide'); ?></button>
+            </div>
+        </div>
+        <div class="mapping-template-body" id="<?php echo $filterId; ?>">
+            <p class="mapping-template-label"><?php echo $this->translate('Resource templates'); ?></p>
+            <div class="mapping-template-buttons" role="group"
+                aria-label="<?php echo $this->escapeHtml($this->translate('Filter by resource template')); ?>"></div>
+        </div>
+        <p class="mapping-template-empty" role="status" hidden><?php echo $this->translate('No mapped items match the selected categories in this view.'); ?></p>
+    </section>
     <?php endif; ?>
 
     <div class="mapping-map" style="height:500px;"
@@ -38,4 +54,11 @@ $legendId = 'mapping-legend-' . uniqid();
         data-features-query="<?php echo $this->escapeHtml(json_encode($featuresQuery)); ?>">
     </div>
 
+    <?php if ($isTimeline && !$timelineData['events']): ?>
+        <p class="mapping-timeline-empty" role="status"><?php echo $this->translate('No mapped items have a valid value for the selected timeline date property.'); ?></p>
+    <?php elseif ($isTimeline): ?>
+        <div class="mapping-timeline" style="height: <?php echo (int) ($timelineOptions['timenav_height'] ?? 175); ?>px"
+            data-data="<?php echo $this->escapeHtml(json_encode($timelineData)); ?>"
+            data-options="<?php echo $this->escapeHtml(json_encode($timelineOptions)); ?>"></div>
+    <?php endif; ?>
 </div>

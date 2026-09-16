@@ -45,6 +45,46 @@ version 1.0.1 and is active.
 
 ## Usage
 
+### Timeline layout and appearance
+
+Map by attachments and Map by query blocks show their timeline at full width below the map.
+In the block's **Timeline** settings, choose **Timeline layout** to switch to a side-by-side
+layout on larger screens. Both layouts stack on small screens. The timeline shows only the date navigation; the separate
+slide/detail area is hidden. Selecting a timeline item highlights its map pin and opens its popup
+(or the configured marker sidebar).
+
+The timeline keeps its default font and colours unless an override is supplied in the block editor. Set **Timeline font family** to a
+font stack already available on the site (for example `Georgia, serif`). **Timeline text colour**
+and **Timeline background colour** accept three- or six-digit hex colours such as `#333333`.
+Leave these fields blank to preserve the default timeline appearance. Each override applies independently.
+
+The initial map shows all items with locations matching the block query or attachments, including
+items without dates. The timeline includes only items with a valid numeric timestamp or interval
+in the selected date property. Selecting a timeline event narrows the map to that event (and any
+contemporaneous events when enabled); returning to the initial timeline view restores all mapped
+items, subject to the resource template filters. In linked-items mode, dates belong to the displayed
+linked items.
+
+With **Show contemporaneous events** enabled, selecting an event shows every mapped item whose
+interval overlaps it, including timestamps within that interval. This works with both the default
+view and **Fly to** zoom settings; Fly to fits all matching features. Multiple date values on one
+item are checked individually, and each matching item is shown once. Resource template filters
+still apply.
+
+### Resource template filters
+
+Map by attachments and Map by query blocks show a compact filter panel in the bottom-right corner
+of the map, with clickable filters for the resource templates
+of their mapped items. All categories start selected. Click any category to hide or restore it independently; selected buttons use their configured colour and deselected buttons turn grey. Select any combination, including none, or use **Reset Filters** to show all categories. Click **Hide** to collapse the category buttons and **Show** to expand them. Items
+without a template appear under **No resource template**. Buttons use the marker colours configured in the block editor, automatically choose light or dark text for contrast, support keyboard navigation, and indicate the selected category. Disable **Show resource template filters** in **Default
+View** to hide them.
+
+Filters apply to map markers and shapes, including when browsing timeline events. Timeline
+events remain available; an empty-state message appears when the selected event has no mapped
+items in the chosen category. In linked-items mode, filters use the displayed linked item's
+template, not the template of the item providing its location. Filter categories are independent
+of the colour grouping settings and only include templates represented in the loaded map.
+
 ### Mapping Linked Items
 
 The Mapping Extensions module introduces the ability to visualize linked items instead of only attached or queried 

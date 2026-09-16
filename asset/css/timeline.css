@@ -1,47 +1,81 @@
-.tl-timeline,
-.tl-text .tl-headline-date, 
-.tl-text h3.tl-headline-date {
-  font-family: inherit;
-}
-
 .mapping-block.timeline {
   width: 100%;
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.mapping-block.timeline > .mapping-timeline {
-  flex: 0 0 40%;
-  min-width: 0;
-  width: 40%;
-}
-
-.mapping-block.timeline > .mapping-map {
-  flex: 0 0 60%;
-  min-width: 0;
-  width: 60%;
-}
-
-.mapping-block.timeline .tl-timeline {
-  height: 100%;
+.mapping-block.timeline > .mapping-map,
+.mapping-block.timeline > :is(.mapping-timeline, .tl-timeline) {
   width: 100%;
+  min-width: 0;
 }
 
-@media screen and (min-width:640px) {
-  .mapping-block.timeline > .mapping-timeline,
-  .mapping-block.timeline > .mapping-map,
-  .mapping-block.timeline .tl-timeline {
-    min-height: 60vh !important;
+/* Apply only appearance values explicitly supplied in the block editor. */
+.mapping-block.timeline-custom-font :is(.tl-timeline, .tl-timeline h1, .tl-timeline h2, .tl-timeline h3, .tl-timeline h4,
+.tl-timeline h5, .tl-timeline h6, .tl-timeline p, .tl-timeline a, .tl-headline-date,
+.tl-timemarker-text, .tl-timenav-slider, .tl-timeaxis, .tl-timeaxis-tick-text,
+.tl-slidenav-title, .tl-slidenav-description, .tl-media-caption, .tl-media-credit,
+.tl-text, .tl-text-content, .tl-timenav, .tl-timeaxis-tick, .tl-timeaxis-major,
+.tl-timeaxis-minor, .tl-attribution, .tl-slidenav, .tl-timemarker-content-container) {
+  font-family: var(--mapping-timeline-font) !important;
+}
+
+.mapping-block.timeline-custom-text :is(.tl-timeline, .tl-timeline h1, .tl-timeline h2, .tl-timeline h3, .tl-timeline h4,
+.tl-timeline h5, .tl-timeline h6, .tl-timeline p, .tl-timeline a, .tl-headline-date,
+.tl-timemarker-text, .tl-timenav-slider, .tl-timeaxis, .tl-timeaxis-tick-text,
+.tl-slidenav-title, .tl-slidenav-description, .tl-media-caption, .tl-media-credit,
+.tl-text, .tl-text-content, .tl-timenav, .tl-timeaxis-tick, .tl-timeaxis-major,
+.tl-timeaxis-minor, .tl-attribution, .tl-slidenav, .tl-timemarker-content-container) {
+  color: var(--mapping-timeline-text) !important;
+}
+
+.mapping-block.timeline-custom-background :is(.tl-timeline, .tl-storyslider, .tl-timenav,
+.tl-timenav-slider-background, .tl-timeaxis-background, .tl-timemarker-content-container,
+.tl-menubar-button, .tl-attribution) {
+  background-color: var(--mapping-timeline-background);
+}
+
+@media screen and (min-width: 800px) {
+  .mapping-block.timeline-beside {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+  .mapping-block.timeline-beside > .mapping-template-filter {
+    grid-column: 1 / -1;
+  }
+  .mapping-block.timeline-beside > :is(.mapping-timeline, .tl-timeline) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .mapping-block.timeline-beside > .mapping-map {
+    grid-column: 2;
+    grid-row: 2;
+    height: 600px !important;
   }
 }
 
+/* Keep the navigation icons intact when the site styles buttons or spans. */
+.mapping-block.timeline .tl-timeline [class^="tl-icon-"],
+.mapping-block.timeline .tl-timeline [class*=" tl-icon-"] {
+  font-family: 'tl-icons' !important;
+}
 
-@media screen and (max-width:639px) {
-  .mapping-block.timeline {
-    display: block;
-  }
-  
-  .mapping-block.timeline > .mapping-timeline,
-  .mapping-block.timeline > .mapping-map {
-    width: 100%;
-  }
+/* Keep only the date navigation; item details open on the map. */
+.mapping-block.timeline .tl-storyslider {
+  display: none;
+}
+.mapping-block.timeline .tl-timenav {
+  top: 0 !important;
+  height: 100% !important;
+}
+
+.mapping-block.timeline-custom-text .tl-timeline [class^="tl-icon-"],
+.mapping-block.timeline-custom-text .tl-timeline [class*=" tl-icon-"] {
+  color: var(--mapping-timeline-text);
+}
+
+.mapping-block.timeline-beside > .mapping-timeline-empty {
+  grid-column: 1;
+  grid-row: 2;
 }

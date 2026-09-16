@@ -2,6 +2,23 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.1.3] - 2026-09-16
+
+### Added
+
+- **Resource template filters:** Added a compact filter panel in the bottom-right corner of Map by attachments and Map by query blocks. Categories toggle independently, support any combination including none, and use the configured marker colours when selected or grey when deselected. Includes Reset Filters and Hide/Show controls, keyboard support, and a block setting to disable the panel.
+- **Timeline appearance settings:** Added optional font family, text colour, and background colour settings. Blank fields preserve the default timeline appearance; each override applies independently.
+
+### Changed
+
+- **Timeline layout:** Show the timeline at full width below the map by default, with an optional side-by-side layout on larger screens. Hide the separate slide/detail area and retain the compact date navigation.
+- **Timeline selection:** Selecting an event highlights its map pin and opens its popup or configured sidebar. Resource template filters remain active during timeline navigation. The initial map continues to show all matching items with locations, including undated items; only the timeline requires a valid date.
+
+### Fixed
+
+- **Contemporaneous events:** Include overlapping events with Fly to enabled, and correctly compare timestamps with intervals in either selection direction. Check every date value, show each matching item once, and fit the view to the matching features while respecting resource template filters.
+- **Mobile filter layout:** Keep the filter panel within the map and reposition the legend on narrow maps to prevent overlapping controls.
+
 ## [1.1.2] - 2026-07-30
 
 ### Added

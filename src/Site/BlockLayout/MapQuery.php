@@ -105,8 +105,8 @@ class MapQuery extends AbstractMap
         $form = $this->formElementManager->get(BlockLayoutMapQueryForm::class);
         $data = $form->prepareBlockData($block->data());
 
-        $isTimeline = (bool) $data['timeline']['data_type_properties'];
         $timelineIsAvailable = $this->timelineIsAvailable();
+        $isTimeline = $timelineIsAvailable && (bool) $data['timeline']['data_type_properties'];
 
         parse_str($data['query'], $itemsQuery);
         $featuresQuery = [];

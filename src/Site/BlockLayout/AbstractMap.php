@@ -89,7 +89,7 @@ abstract class AbstractMap extends AbstractBlockLayout
     {
         $options = [
             'debug' => false,
-            'timenav_position' => 'bottom',
+            'timenav_position' => ($data['timeline']['timenav_position'] ?? '') === 'full_width_above' ? 'top' : 'bottom',
         ];
 
         $markerRows = (int) ($data['timeline']['marker_rows'] ?? 4);

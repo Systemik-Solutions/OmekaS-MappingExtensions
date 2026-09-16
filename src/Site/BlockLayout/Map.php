@@ -91,8 +91,8 @@ class Map extends AbstractMap
         $form = $this->formElementManager->get(BlockLayoutMapForm::class);
         $data = $form->prepareBlockData($block->data());
 
-        $isTimeline = (bool) $data['timeline']['data_type_properties'];
         $timelineIsAvailable = $this->timelineIsAvailable();
+        $isTimeline = $timelineIsAvailable && (bool) $data['timeline']['data_type_properties'];
 
         $itemIds = [];
         foreach ($block->attachments() as $attachment) {

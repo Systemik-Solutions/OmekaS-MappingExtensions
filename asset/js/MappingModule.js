@@ -1,4 +1,14 @@
 const MappingModule = {
+    /** Compare inclusive event ranges; a timestamp is a range with equal ends. */
+    timelineEventsOverlap: function(first, second) {
+        if (!first.start_date || !second.start_date) return false;
+        const firstStart = first.start_date.getTime();
+        const firstEnd = first.end_date ? first.end_date.getTime() : firstStart;
+        const secondStart = second.start_date.getTime();
+        const secondEnd = second.end_date ? second.end_date.getTime() : secondStart;
+        return [firstStart, firstEnd, secondStart, secondEnd].every(Number.isFinite)
+            && firstStart <= secondEnd && secondStart <= firstEnd;
+    },
     /**
      *
      * @param {DOM object} mapDiv The map div DOM object
@@ -139,7 +149,9 @@ const MappingModule = {
      * @param {object}   featuresQuery             The features query
      * @param {callback} onFeaturesLoadSetView     An optional function called to set view after features are loaded
      * @param {object}   featuresByResource        An optional object
-     * @param {int}      featuresPage              The
+     * @param {int}      featuresPage              The feature page to request
+     * @param {object|string|null} blockData        Block settings
+     * @param {callback|null} onFeatureLoad         Called for each layer after it is added
      */
     loadFeaturesAsync: function (
         map,
@@ -152,7 +164,8 @@ const MappingModule = {
         onFeaturesLoad = () => null,
         featuresByResource = {},
         featuresPage = 1,
-        blockData = null
+        blockData = null,
+        onFeatureLoad = null
     ) {
         // Normalize blockData (it may arrive as a JSON string)
         if (blockData && typeof blockData === "string") {
@@ -362,6 +375,7 @@ const MappingModule = {
                         layer.mapping_resource_id = resourceId;
                         layer.mapping_feature_title = featureGeography.properties?.title || '';
                         layer.mapping_feature_url = itemUrl;
+                        layer.mapping_resource_template = featureData[5] || {id: 0, label: null};
 
                         if (getFeaturePopupContentUrl && sidebarTabsInPopup) {
                             const popup = L.popup({ maxWidth: 480 });
@@ -406,6 +420,9 @@ const MappingModule = {
                             layer,
                             feature.type
                         );
+                        if (onFeatureLoad) {
+                            onFeatureLoad(layer, feature.type);
+                        }
                         if (!(resourceId in featuresByResource)) {
                             featuresByResource[resourceId] = L.featureGroup();
                         }
@@ -425,7 +442,8 @@ const MappingModule = {
                 onFeaturesLoad,
                 featuresByResource,
                 ++featuresPage,
-                blockData
+                blockData,
+                onFeatureLoad
             );
         });
     },
