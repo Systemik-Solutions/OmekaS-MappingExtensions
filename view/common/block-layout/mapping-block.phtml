@@ -21,25 +21,28 @@ if ($isTimeline) {
 ?>
 <div class="<?php echo $this->escapeHtml(implode(' ', $classes)); ?>"
     style="<?php echo $this->escapeHtml(implode(';', $timelineStyles)); ?>">
-    <?php if ($data['show_resource_template_filter'] ?? false): ?>
+    <?php if (!empty($data['filters']['enabled']) && !empty($data['filters']['rows'])): ?>
     <section class="mapping-template-filter" hidden
         aria-label="<?php echo $this->escapeHtml($this->translate('Map filters')); ?>"
-        data-no-template="<?php echo $this->escapeHtml($this->translate('No resource template')); ?>">
+        data-no-template="<?php echo $this->escapeHtml($this->translate('No resource template')); ?>"
+        data-no-class="<?php echo $this->escapeHtml($this->translate('No resource class')); ?>"
+        data-template-label="<?php echo $this->escapeHtml($this->translate('Resource templates')); ?>"
+        data-class-label="<?php echo $this->escapeHtml($this->translate('Resource classes')); ?>"
+        data-all-values="<?php echo $this->escapeHtml($this->translate('All values')); ?>"
+        data-search-values="<?php echo $this->escapeHtml($this->translate('Search values')); ?>"
+        data-no-values="<?php echo $this->escapeHtml($this->translate('No values available')); ?>"
+        data-no-results="<?php echo $this->escapeHtml($this->translate('No matching values')); ?>">
         <div class="mapping-template-header">
             <h3><?php echo $this->translate('Filters'); ?></h3>
             <div class="mapping-template-actions">
-                <button type="button" class="mapping-template-reset" data-template-id="all"><?php echo $this->translate('Reset Filters'); ?></button>
+                <button type="button" class="mapping-template-reset" ><?php echo $this->translate('Reset Filters'); ?></button>
                 <button type="button" class="mapping-template-toggle" aria-expanded="true"
                     aria-controls="<?php echo $filterId; ?>"
                     data-show-label="<?php echo $this->escapeHtml($this->translate('Show')); ?>"
                     data-hide-label="<?php echo $this->escapeHtml($this->translate('Hide')); ?>"><?php echo $this->translate('Hide'); ?></button>
             </div>
         </div>
-        <div class="mapping-template-body" id="<?php echo $filterId; ?>">
-            <p class="mapping-template-label"><?php echo $this->translate('Resource templates'); ?></p>
-            <div class="mapping-template-buttons" role="group"
-                aria-label="<?php echo $this->escapeHtml($this->translate('Filter by resource template')); ?>"></div>
-        </div>
+        <div class="mapping-template-body" id="<?php echo $filterId; ?>"></div>
         <p class="mapping-template-empty" role="status" hidden><?php echo $this->translate('No mapped items match the selected categories in this view.'); ?></p>
     </section>
     <?php endif; ?>

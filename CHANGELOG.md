@@ -2,6 +2,21 @@
 
 All notable changes to this module will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Multiple filter criteria:** Added separate editor buttons for template, class, and property filters, making it easier to combine both resource types with any number of property fields in one panel. Items must match every active filter.
+- **Configurable map filters:** Added a show/hide setting and multiple filters by resource template, resource class, or property. Property filters use searchable Choices.js multi-select dropdowns populated from all mapped values. Selections combine across filters and remain active during timeline navigation. Existing filter settings are preserved.
+- **Legend visibility:** Added a Show legend checkbox under Groups for Map by attachments, Map by query, and Journey map blocks. Enabled by default for existing and new blocks; hiding the legend leaves marker colours and resource template filters unchanged.
+
+### Fixed
+
+- **Filter editor validation:** Show an inline message and focus the visible property dropdown when a field is missing, instead of blocking Save with a hidden-control error. Disabled filters and removed blocks do not prevent saving.
+- **Filter property choices:** Limit the editor's property selector to fields used by the current mapped items. Refresh choices when the query, attachments, or linked-item settings change, and preserve saved filters whose properties are no longer used.
+- **Sidebar controls:** Dock item and cluster details beside wide maps and below narrow maps so the panel cannot cover zoom, fullscreen, legends, or filters. Keep the layout usable in fullscreen and restore the map width when details close.
+- **Sidebar dismissal:** Clicking the map background closes the details sidebar and clears the selected marker's highlight circle.
+
 ## [1.1.3] - 2026-09-16
 
 ### Added

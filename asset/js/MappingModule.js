@@ -177,6 +177,16 @@ const MappingModule = {
         }
         if (!blockData) blockData = {};
 
+        // Older blocks have no visibility setting and should keep their legend.
+        const showLegend = ![false, 0, "0"].includes(
+            blockData.group_by_control && blockData.group_by_control.show_legend
+        );
+        if (!showLegend) {
+            map._container.querySelectorAll(".mapping-legend").forEach(function(legend) {
+                legend.remove();
+            });
+        }
+
         const sidebarTabsEnabled = !!(
             blockData.sidebar_tabs
             && (
@@ -223,7 +233,7 @@ const MappingModule = {
 
         // helper to build/update legend from AJAX data (NEW)
         function updateLegendFromAjax(legendEntries) {
-            if (!legendEntries || !legendEntries.length) return;
+            if (!showLegend || !legendEntries || !legendEntries.length) return;
     
             // Find the closest mapping-block for THIS map only
             const mapContainer = map._container;
@@ -376,6 +386,7 @@ const MappingModule = {
                         layer.mapping_feature_title = featureGeography.properties?.title || '';
                         layer.mapping_feature_url = itemUrl;
                         layer.mapping_resource_template = featureData[5] || {id: 0, label: null};
+                        layer.mapping_filter_values = featureData[6] || {};
 
                         if (getFeaturePopupContentUrl && sidebarTabsInPopup) {
                             const popup = L.popup({ maxWidth: 480 });
@@ -479,9 +490,14 @@ const MappingModule = {
             return;
         }
 
-        mapContainer.classList.add("mapping-sidebar-enabled");
         map.mapping_sidebar_popup_content_url = getFeaturePopupContentUrl;
         map.mapping_sidebar_block_data = blockData;
+
+        // Give the sidebar its own space so it cannot cover Leaflet controls.
+        const layout = document.createElement("div");
+        layout.className = "mapping-sidebar-layout";
+        mapContainer.before(layout);
+        layout.appendChild(mapContainer);
 
         let sidebar = mapContainer.querySelector(".mapping-sidebar-panel");
         if (!sidebar && block) {
@@ -490,6 +506,7 @@ const MappingModule = {
         if (!sidebar) {
             sidebar = document.createElement("aside");
             sidebar.className = "mapping-sidebar-panel";
+            sidebar.setAttribute("aria-label", "Map details");
             sidebar.innerHTML = [
                 '<button type="button" class="mapping-sidebar-close" aria-label="Close">&times;</button>',
                 '<div class="mapping-sidebar-inner"></div>'
@@ -498,22 +515,63 @@ const MappingModule = {
         if (window.getComputedStyle(mapContainer).position === "static") {
             mapContainer.style.position = "relative";
         }
-        mapContainer.appendChild(sidebar);
+        layout.appendChild(sidebar);
+        if (map.fullscreenControl) {
+            map.fullscreenControl.options.fullscreenElement = layout;
+        }
+
+        const resizeMap = function() {
+            map.invalidateSize({ animate: false });
+        };
+        // Also handle container resizing, including fullscreen and narrow columns.
+        const resizeObserver = new ResizeObserver(resizeMap);
+        resizeObserver.observe(mapContainer);
+        map.on("unload", function() {
+            resizeObserver.disconnect();
+            layout.before(mapContainer);
+            layout.remove();
+        });
+
         if (L.DomEvent) {
             L.DomEvent.disableClickPropagation(sidebar);
             L.DomEvent.disableScrollPropagation(sidebar);
         }
 
         const closeSidebar = function() {
+            const restoreFocus = sidebar.contains(document.activeElement);
             sidebar.classList.remove("is-open");
+            layout.classList.remove("mapping-sidebar-open");
             sidebar.querySelector(".mapping-sidebar-inner").innerHTML = "";
+            resizeMap();
             MappingModule.clearMarkerHighlight(map);
+            if (restoreFocus) {
+                mapContainer.focus({ preventScroll: true });
+            }
             if (map.closePopup) {
                 map.closePopup();
             }
         };
 
         sidebar.querySelector(".mapping-sidebar-close").addEventListener("click", closeSidebar);
+        map.on("click", function(event) {
+            if (!map.mapping_sidebar_mode || !sidebar.classList.contains("is-open")) {
+                return;
+            }
+            const target = event.originalEvent && event.originalEvent.target;
+            // Ignore features and controls: only the map background dismisses details.
+            if (!target || target.closest(
+                ".leaflet-interactive, .leaflet-marker-icon, .leaflet-control, .leaflet-popup, .mapping-legend, .mapping-template-filter"
+            )) {
+                return;
+            }
+            closeSidebar();
+        });
+        sidebar.addEventListener("keydown", function(event) {
+            if (event.key === "Escape") {
+                event.stopPropagation();
+                closeSidebar();
+            }
+        });
         map.on("popupclose", function() {
             if (!map.mapping_sidebar_mode) {
                 return;
@@ -522,6 +580,11 @@ const MappingModule = {
         });
 
         map.mapping_close_sidebar = closeSidebar;
+        map.mapping_open_sidebar = function() {
+            sidebar.classList.add("is-open");
+            layout.classList.add("mapping-sidebar-open");
+            resizeMap();
+        };
         map.mapping_show_feature_sidebar = function(marker) {
             MappingModule.showSidebarFeature(
                 map,
@@ -564,7 +627,7 @@ const MappingModule = {
             html += '</ul>';
 
             inner.innerHTML = html;
-            sidebar.classList.add("is-open");
+            map.mapping_open_sidebar();
             if (latlng) {
                 map.panTo(latlng, { animate: true });
             }
@@ -660,7 +723,7 @@ const MappingModule = {
             );
         };
 
-        sidebar.classList.add("is-open");
+        map.mapping_open_sidebar();
         loadTab(0);
     },
     showTabbedPopup: function(map, popup, marker, getFeaturePopupContentUrl, blockData) {

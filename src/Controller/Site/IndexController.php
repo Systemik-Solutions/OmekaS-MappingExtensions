@@ -31,6 +31,21 @@ class IndexController extends AbstractActionController
     /** @var int Default stroke width for journey polylines. */
     private const JOURNEY_STROKE_WIDTH = 6;
 
+    /** Filter metadata is shared by all features of an item in this response. */
+    private array $filterMetadata = [];
+
+    private bool $filterPropertiesOnly = false;
+    private bool $filterPropertiesHasMore = false;
+    private array $usedFilterProperties = [];
+    private array $filterPropertyItems = [];
+
+    /** Property choices for the editor, using the same items as the rendered map. */
+    public function getFilterPropertiesAction()
+    {
+        $this->filterPropertiesOnly = true;
+        return $this->getFeaturesAction();
+    }
+
     /**
      * Browse action: renders the map browse page with query parameters.
      *
@@ -73,6 +88,12 @@ class IndexController extends AbstractActionController
     {
         // --- Parse incoming queries ---
         $itemsQuery    = json_decode($this->params()->fromQuery('items_query'), true) ?: [];
+        if ($this->filterPropertiesOnly && $this->params()->fromQuery('items_query_string') !== null) {
+            $queryString = $this->params()->fromQuery('items_query_string');
+            if (is_string($queryString) && $queryString !== '') {
+                parse_str(ltrim($queryString, '?'), $itemsQuery);
+            }
+        }
         $featuresQuery = json_decode($this->params()->fromQuery('features_query'), true) ?: [];
         $blockData     = json_decode($this->params()->fromQuery('block_data'), true) ?: [];
 
@@ -108,12 +129,18 @@ class IndexController extends AbstractActionController
         $featuresQuery['item_id']  = $itemIds ?: 0;
 
         $featureResponse = $api->search('mapping_features', $featuresQuery);
+        $this->filterPropertiesHasMore = $featureResponse->getTotalResults()
+            > $featuresQuery['page'] * self::FEATURES_PER_PAGE;
 
         $features  = [];
         $legendMap = [];
 
         foreach ($featureResponse->getContent() as $feature) {
             $displayItem = $feature->item();
+            if ($this->filterPropertiesOnly) {
+                $this->collectFilterProperties($displayItem);
+                continue;
+            }
             $color       = $this->getItemColor($displayItem, $blockData, $api);
             $geo         = $feature->geography();
             $featureArray = $this->buildFeatureArray($geo, $displayItem->displayTitle());
@@ -125,6 +152,7 @@ class IndexController extends AbstractActionController
                 $color,
                 $displayItem->url(),
                 $this->getResourceTemplateMetadata($displayItem, $color),
+                $this->getFilterMetadata($displayItem, $blockData, $color),
             ];
 
             $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
@@ -142,6 +170,89 @@ class IndexController extends AbstractActionController
             'label' => $template ? $template->label() : null,
             'color' => $color ?: self::DEFAULT_COLOR,
         ];
+    }
+
+    private function collectFilterProperties(ItemRepresentation $item): void
+    {
+        if (isset($this->filterPropertyItems[$item->id()])) {
+            return;
+        }
+        $this->filterPropertyItems[$item->id()] = true;
+        foreach ($item->values() as $term => $propertyData) {
+            if (isset($this->usedFilterProperties[$term])) {
+                continue;
+            }
+            foreach ($propertyData['values'] as $value) {
+                if ($value->isHidden() || (!$value->valueResource()
+                    && trim((string) $value->uri()) === '' && trim((string) $value->value()) === '')
+                ) {
+                    continue;
+                }
+                $property = $propertyData['property'];
+                $this->usedFilterProperties[$term] = [
+                    'term' => $term,
+                    'label' => $property->label(),
+                    'vocabulary' => $property->vocabulary()->label(),
+                ];
+                break;
+            }
+        }
+    }
+
+    /** Values from the displayed item, scoped to the filters requested by this map. */
+    private function getFilterMetadata(ItemRepresentation $item, array $blockData, ?string $color): array
+    {
+        if (isset($this->filterMetadata[$item->id()])) {
+            return $this->filterMetadata[$item->id()];
+        }
+        $metadata = [];
+        if (empty($blockData['filters']['enabled'])) {
+            return $metadata;
+        }
+        foreach ((array) ($blockData['filters']['rows'] ?? []) as $filter) {
+            if (!is_array($filter)) {
+                continue;
+            }
+            $type = $filter['type'] ?? '';
+            if ($type === 'resource_template' || $type === 'resource_class') {
+                $resource = $type === 'resource_template' ? $item->resourceTemplate() : $item->resourceClass();
+                $metadata[$type] = [[
+                    'value' => (string) ($resource ? $resource->id() : 0),
+                    'label' => $resource ? $resource->label() : null,
+                    'color' => $color ?: self::DEFAULT_COLOR,
+                ]];
+                continue;
+            }
+            $term = $filter['property'] ?? '';
+            if ($type !== 'property' || !is_string($term)
+                || !preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*:[a-zA-Z0-9_.-]+$/D', $term)
+            ) {
+                continue;
+            }
+            $values = [];
+            foreach ($item->value($term, ['all' => true]) as $value) {
+                if ($value->isHidden()) {
+                    continue;
+                }
+                $resource = $value->valueResource();
+                if ($resource) {
+                    $key = 'resource:' . $resource->id();
+                    $label = $resource->displayTitle();
+                } elseif ($value->uri()) {
+                    $key = 'uri:' . $value->uri();
+                    $label = trim((string) $value->value()) ?: $value->uri();
+                } else {
+                    $label = trim((string) $value->value());
+                    if ($label === '') {
+                        continue;
+                    }
+                    $key = 'literal:' . $label;
+                }
+                $values[$key] = ['value' => $key, 'label' => $label];
+            }
+            $metadata['property:' . $term] = array_values($values);
+        }
+        return $this->filterMetadata[$item->id()] = $metadata;
     }
 
     /**
@@ -287,6 +398,8 @@ class IndexController extends AbstractActionController
         $featuresQuery['item_id']  = $originalItemIds ?: 0;
 
         $featureResponse = $api->search('mapping_features', $featuresQuery);
+        $this->filterPropertiesHasMore = $featureResponse->getTotalResults()
+            > $featuresQuery['page'] * self::FEATURES_PER_PAGE;
 
         $features  = [];
         $legendMap = [];
@@ -301,6 +414,12 @@ class IndexController extends AbstractActionController
             // For each linked item, emit a feature row
             foreach (array_keys($originalToLinked[$origItemId]) as $linkedId) {
                 $displayItem  = $this->getItemById($linkedId, $api, $itemCache);
+                if ($this->filterPropertiesOnly) {
+                    if ($displayItem) {
+                        $this->collectFilterProperties($displayItem);
+                    }
+                    continue;
+                }
                 $color        = $this->getItemColor($displayItem, $blockData, $api);
                 $geo          = $feature->geography();
                 $featureArray = $this->buildFeatureArray($geo, $displayItem->displayTitle());
@@ -312,6 +431,7 @@ class IndexController extends AbstractActionController
                     $color,
                     $displayItem->url(),
                     $this->getResourceTemplateMetadata($displayItem, $color),
+                    $this->getFilterMetadata($displayItem, $blockData, $color),
                 ];
 
                 $this->addLegendForItem($legendMap, $displayItem, $color, $blockData, $api);
@@ -1017,6 +1137,11 @@ class IndexController extends AbstractActionController
      */
     private function buildFeaturesJsonResponse(array $features, array $legendMap): JsonModel
     {
+        if ($this->filterPropertiesOnly) {
+            $properties = array_values($this->usedFilterProperties);
+            usort($properties, static fn($a, $b) => strnatcasecmp($a['label'] . $a['term'], $b['label'] . $b['term']));
+            return new JsonModel(['properties' => $properties, 'has_more' => $this->filterPropertiesHasMore]);
+        }
         uasort($legendMap, function ($a, $b) {
             return strcasecmp($a['label'], $b['label']);
         });

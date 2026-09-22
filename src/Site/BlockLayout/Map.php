@@ -59,6 +59,12 @@ class Map extends AbstractMap
             'data' => $data,
             'form' => $form,
         ]);
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/filters', [
+            'data' => $data,
+            'form' => $form,
+            'site' => $site,
+            'filterMode' => 'attachments',
+        ]);
         $formHtml[] = $view->partial('common/block-layout/mapping-block-form/overlays', [
             'data' => $data,
             'form' => $form,

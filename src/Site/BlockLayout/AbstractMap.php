@@ -34,6 +34,7 @@ abstract class AbstractMap extends AbstractBlockLayout
         $view->headScript()->appendFile($view->assetUrl('node_modules/leaflet.fullscreen/Control.FullScreen.js', 'MappingExtensions'));
 
         $view->headScript()->appendFile($view->assetUrl('js/mapping-block-form.js', 'MappingExtensions'));
+        $view->headScript()->appendFile($view->assetUrl('js/mapping-filters-form.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('js/control.default-view.js', 'MappingExtensions'));
     }
 
@@ -45,6 +46,7 @@ abstract class AbstractMap extends AbstractBlockLayout
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet-groupedlayercontrol/dist/leaflet.groupedlayercontrol.min.css', 'MappingExtensions'));
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet.fullscreen/Control.FullScreen.css', 'MappingExtensions'));
 
+        $view->headLink()->appendStylesheet($view->assetUrl('node_modules/choices.js/public/assets/styles/choices.min.css', 'MappingExtensions'));
         $view->headLink()->appendStylesheet($view->assetUrl('css/mapping.css', 'MappingExtensions'));
 
         $view->headScript()->appendFile($view->assetUrl('node_modules/leaflet/dist/leaflet.js', 'MappingExtensions'));
@@ -56,6 +58,8 @@ abstract class AbstractMap extends AbstractBlockLayout
         $view->headScript()->appendFile('https://cdn.jsdelivr.net/npm/@allmaps/leaflet/dist/bundled/allmaps-leaflet-1.9.umd.js');
 
         $view->headScript()->appendFile($view->assetUrl('js/MappingModule.js', 'MappingExtensions'));
+        $view->headScript()->appendFile($view->assetUrl('node_modules/choices.js/public/assets/scripts/choices.min.js', 'MappingExtensions'));
+        $view->headScript()->appendFile($view->assetUrl('js/mapping-filters.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('js/control.opacity.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('js/control.fit-bounds.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('js/mapping-block.js', 'MappingExtensions'));

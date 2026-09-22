@@ -5,7 +5,7 @@
   gap: 1rem;
 }
 
-.mapping-block.timeline > .mapping-map,
+.mapping-block.timeline > :is(.mapping-map, .mapping-sidebar-layout),
 .mapping-block.timeline > :is(.mapping-timeline, .tl-timeline) {
   width: 100%;
   min-width: 0;
@@ -48,9 +48,11 @@
     grid-column: 1;
     grid-row: 2;
   }
-  .mapping-block.timeline-beside > .mapping-map {
+  .mapping-block.timeline-beside > :is(.mapping-map, .mapping-sidebar-layout) {
     grid-column: 2;
     grid-row: 2;
+  }
+  .mapping-block.timeline-beside .mapping-map {
     height: 600px !important;
   }
 }

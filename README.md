@@ -62,28 +62,46 @@ The initial map shows all items with locations matching the block query or attac
 items without dates. The timeline includes only items with a valid numeric timestamp or interval
 in the selected date property. Selecting a timeline event narrows the map to that event (and any
 contemporaneous events when enabled); returning to the initial timeline view restores all mapped
-items, subject to the resource template filters. In linked-items mode, dates belong to the displayed
+items, subject to the map filters. In linked-items mode, dates belong to the displayed
 linked items.
 
 With **Show contemporaneous events** enabled, selecting an event shows every mapped item whose
 interval overlaps it, including timestamps within that interval. This works with both the default
 view and **Fly to** zoom settings; Fly to fits all matching features. Multiple date values on one
-item are checked individually, and each matching item is shown once. Resource template filters
+item are checked individually, and each matching item is shown once. Map filters
 still apply.
 
-### Resource template filters
+### Map filters
 
-Map by attachments and Map by query blocks show a compact filter panel in the bottom-right corner
-of the map, with clickable filters for the resource templates
-of their mapped items. All categories start selected. Click any category to hide or restore it independently; selected buttons use their configured colour and deselected buttons turn grey. Select any combination, including none, or use **Reset Filters** to show all categories. Click **Hide** to collapse the category buttons and **Show** to expand them. Items
-without a template appear under **No resource template**. Buttons use the marker colours configured in the block editor, automatically choose light or dark text for contrast, support keyboard navigation, and indicate the selected category. Disable **Show resource template filters** in **Default
-View** to hide them.
+Map by attachments and Map by query blocks can display a compact filter panel in the bottom-right
+corner of the map. In the block editor, open **Map filters** and use **Show map filters** to enable
+or disable the panel. Use **Add template filter**, **Add class filter**, and **Add property filter**
+to configure any combination of:
 
-Filters apply to map markers and shapes, including when browsing timeline events. Timeline
-events remain available; an empty-state message appears when the selected event has no mapped
-items in the chosen category. In linked-items mode, filters use the displayed linked item's
-template, not the template of the item providing its location. Filter categories are independent
-of the colour grouping settings and only include templates represented in the loaded map.
+- **Resource template** or **Resource class:** coloured category buttons. All categories start
+  selected; clicking a button turns it grey and hides that category. Click again to restore it.
+- **Property values:** select a property, such as `schema:category`, for a searchable Choices.js
+  dropdown with multiple selections. Every distinct value found on the mapped items becomes an
+  option, including multiple values on one item. No selection means all values, including items
+  without that property. Linked resources and URI values are supported as well as text values.
+
+Click **Add property filter** again for each additional field. For example, one panel can contain
+a resource template filter, a resource class filter, a category field, and a language field, all
+working together. Adding a filter keeps the other configured filters.
+
+The editor's property selector lists only fields with values on the current mapped items. Its
+choices refresh when the query, attachments, or linked-item settings change. A saved filter using
+a property that is no longer present is retained and flagged for review.
+
+Each filter can have an optional display label. Selections within one filter are combined with
+OR; separate filters are combined with AND. **Reset Filters** clears every selection and restores
+all categories. **Hide** and **Show** collapse or expand the panel. The options come from all items
+loaded for this map and remain available when another filter is applied.
+
+Filters apply to markers and shapes, including timeline selections. Timeline events remain
+available; an empty-state message appears when no mapped items match the current filters. In
+linked-items mode, filter values belong to the displayed linked item. Existing blocks keep their
+resource-template filter and its visibility setting until their configuration is changed.
 
 ### Mapping Linked Items
 
@@ -123,6 +141,7 @@ groups. This makes it easier to distinguish categories of items at a glance.
   dropdown will appear to select the specific property.
 - Configure Group Colors (Optional): After selecting a grouping option, you can assign specific colors to each group. 
 If no colors are specified, the module applies a default sequence of colors automatically.
+- Under **Groups**, uncheck **Show legend** to hide the map's colour legend. It is enabled by default; marker colours and resource template filters remain available when it is unchecked.
 
 ### Multiple Timeline Dates and Intervals
 

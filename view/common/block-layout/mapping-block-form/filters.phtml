@@ -1,0 +1,51 @@
+<?php
+$manager = $this->getHelperPluginManager()->getServiceLocator()->get('FormElementManager');
+$enabled = clone $form->get('filters')->get('enabled');
+$enabled->setName('o:block[__blockIndex__][o:data][filters][enabled]');
+$rowForm = $manager->get(\MappingExtensions\Form\Fieldset\MapFilterFieldset::class);
+$renderRow = function ($index, array $row = []) use ($rowForm) {
+    $html = '<fieldset class="mapping-filter-row">';
+    foreach ($rowForm as $key => $element) {
+        $element = clone $element;
+        $element->setName('o:block[__blockIndex__][o:data][filters][rows][' . $index . '][' . $key . ']');
+        $element->setValue($row[$key] ?? ($key === 'type' ? 'resource_template' : ''));
+        if ($key === 'property') {
+            $element->setAttribute('data-selected-property', $row['property'] ?? '');
+            // Retain a saved value until the current item properties have loaded.
+            if (!empty($row['property'])) {
+                $element->setValueOptions([$row['property'] => $row['property']]);
+            }
+        }
+        $html .= $this->formRow($element);
+    }
+    return $html . '<button type="button" class="button mapping-filter-remove">'
+        . $this->escapeHtml($this->translate('Remove filter')) . '</button></fieldset>';
+};
+?>
+<a href="#" class="collapse"><h4><?= $this->translate('Map filters'); ?></h4></a>
+<div class="collapsible mapping-filters-settings"
+    data-properties-url="<?= $this->escapeHtml($this->url('site/mapping', ['site-slug' => $site->slug(), 'controller' => 'index', 'action' => 'get-filter-properties'])); ?>"
+    data-filter-mode="<?= $this->escapeHtml($filterMode); ?>"
+    data-loading-properties="<?= $this->escapeHtml($this->translate('Loading properties used by the current items…')); ?>"
+    data-no-properties="<?= $this->escapeHtml($this->translate('No properties found for the current mapped items.')); ?>"
+    data-properties-error="<?= $this->escapeHtml($this->translate('Could not load properties. Retry or keep the saved filter unchanged.')); ?>"
+    data-required-property="<?= $this->escapeHtml($this->translate('Choose a property for this filter, or remove the filter.')); ?>"
+    data-unused-property="<?= $this->escapeHtml($this->translate('The saved property is not used by the current items. Choose another property or remove this filter.')); ?>">
+    <?= $this->formRow($enabled); ?>
+    <div class="mapping-filters-configuration">
+        <p class="mapping-filter-properties-status" role="status" hidden></p>
+        <button type="button" class="button mapping-filter-properties-retry" hidden><?= $this->translate('Retry'); ?></button>
+        <p><?= $this->translate('Combine resource template, resource class, and property filters. Add a property filter for each field you want visitors to filter by. Items must match every active filter; multiple selections within one filter match any selected value.'); ?></p>
+        <div class="mapping-filter-add-buttons">
+            <button type="button" class="button mapping-filter-add" data-filter-type="resource_template"><?= $this->translate('Add template filter'); ?></button>
+            <button type="button" class="button mapping-filter-add" data-filter-type="resource_class"><?= $this->translate('Add class filter'); ?></button>
+            <button type="button" class="button mapping-filter-add" data-filter-type="property"><?= $this->translate('Add property filter'); ?></button>
+        </div>
+        <div class="mapping-filter-rows">
+            <?php foreach ($data['filters']['rows'] as $index => $row): ?>
+                <?= $renderRow($index, $row); ?>
+            <?php endforeach; ?>
+        </div>
+        <template class="mapping-filter-row-template"><?= $renderRow('__filterIndex__'); ?></template>
+    </div>
+</div>

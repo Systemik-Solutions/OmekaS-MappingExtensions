@@ -8,12 +8,13 @@
     "url": "https://github.com/omeka-s-modules/Mapping.git"
   },
   "dependencies": {
-    "Leaflet.Deflate": "^2.1.0",
+    "choices.js": "11.2.4",
     "leaflet": "^1.9.3",
     "leaflet-draw": "^1.0.4",
     "leaflet-geosearch": "^3.7.0",
     "leaflet-groupedlayercontrol": "^0.6.1",
     "leaflet-providers": "^1.13.0",
+    "Leaflet.Deflate": "^2.1.0",
     "leaflet.fullscreen": "^2.4.0",
     "leaflet.markercluster": "^1.5.3"
   }

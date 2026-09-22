@@ -8,12 +8,8 @@ class BlockLayoutMapForm extends Form
     public function init()
     {
         $this->add([
-            'type' => 'checkbox',
-            'name' => 'o:block[__blockIndex__][o:data][show_resource_template_filter]',
-            'options' => [
-                'label' => 'Show resource template filters', // @translate
-                'info' => 'Let visitors filter mapped items by their resource template.', // @translate
-            ],
+            'type' => Fieldset\MapFiltersFieldset::class,
+            'name' => 'filters',
         ]);
         $this->add([
             'type' => Fieldset\DefaultViewFieldset::class,
@@ -40,6 +36,7 @@ class BlockLayoutMapForm extends Form
     public function prepareBlockData(array $rawData)
     {
         $data = array_merge(
+            $this->get('filters')->filterBlockData($rawData),
             $this->get('default_view')->filterBlockData($rawData),
             $this->get('overlays')->filterBlockData($rawData),
             $this->get('timeline')->filterBlockData($rawData),
@@ -48,7 +45,6 @@ class BlockLayoutMapForm extends Form
         );
         
         $data = array_merge($data, [
-            'show_resource_template_filter' => !array_key_exists('show_resource_template_filter', $rawData) || !empty($rawData['show_resource_template_filter']),
             'map_linked_items'         => !empty($rawData['map_linked_items']) ? '1' : '0',
             'linked_properties' => is_array($rawData['linked_properties'] ?? null)
                 ? array_values($rawData['linked_properties'])
@@ -74,7 +70,7 @@ class BlockLayoutMapForm extends Form
         ]);
 
         $this->setData([
-            'o:block[__blockIndex__][o:data][show_resource_template_filter]' => $data['show_resource_template_filter'],
+            'filters' => ['enabled' => $data['filters']['enabled']],
             'default_view' => [
                 'o:block[__blockIndex__][o:data][basemap_provider]' => $data['basemap_provider'],
                 'o:block[__blockIndex__][o:data][min_zoom]' => $data['min_zoom'],
@@ -100,6 +96,7 @@ class BlockLayoutMapForm extends Form
             'group_by_control' => [
                 'group-by-select' => $data['group_by_control']['group-by-select'] ?? '',
                 'property_value'  => $data['group_by_control']['property_value'] ?? '',
+                'show_legend' => $data['group_by_control']['show_legend'],
                 'show_property_name_in_legend' => $data['group_by_control']['show_property_name_in_legend'] ?? '0',
             ],
             'node_colors' => [

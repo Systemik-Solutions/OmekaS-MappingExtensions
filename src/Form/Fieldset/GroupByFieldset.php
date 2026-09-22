@@ -44,6 +44,22 @@ class GroupByFieldset extends Fieldset
 
         $this->add([
             'type' => Checkbox::class,
+            'name' => 'show_legend',
+            'options' => [
+                'label' => 'Show legend', // @translate
+                'info' => 'Display the colour legend on the map.', // @translate
+                'use_hidden_element' => true,
+                'checked_value' => '1',
+                'unchecked_value' => '0',
+            ],
+            'attributes' => [
+                'value' => '1',
+                'class' => 'mp-show-legend',
+            ],
+        ]);
+
+        $this->add([
+            'type' => Checkbox::class,
             'name' => 'show_property_name_in_legend',
             'options' => [
                 'label' => 'Show property name in legend', // @translate
@@ -64,6 +80,7 @@ class GroupByFieldset extends Fieldset
             'group_by_control' => [
                 'group-by-select' => $rawData['group_by_control']['group-by-select'] ?? '',
                 'property_value'  => $rawData['group_by_control']['property_value'] ?? '',
+                'show_legend' => !empty($rawData['group_by_control']['show_legend'] ?? true) ? '1' : '0',
                 'show_property_name_in_legend' =>
                     !empty($rawData['group_by_control']['show_property_name_in_legend']) ? '1' : '0',
             ],

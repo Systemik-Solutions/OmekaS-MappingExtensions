@@ -56,6 +56,12 @@ class MapQuery extends AbstractMap
             'data' => $data,
             'form' => $form,
         ]);
+        $formHtml[] = $view->partial('common/block-layout/mapping-block-form/filters', [
+            'data' => $data,
+            'form' => $form,
+            'site' => $site,
+            'filterMode' => 'query',
+        ]);
 
         $formHtml[] = $view->partial('common/block-layout/mapping-block-form/linked-items', [
             'data' => $data,

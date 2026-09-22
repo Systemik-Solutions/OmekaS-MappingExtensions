@@ -36,3 +36,29 @@ ul.mapping-overlays {
 .sidebar-tabs-settings .sidebar-tab-remove {
     margin-top: 6px;
 }
+
+.mapping-filters-settings .mapping-filter-row {
+    border: 1px solid #dfdfdf;
+    margin: 0 0 12px;
+    padding: 12px;
+}
+
+.mapping-filters-settings .mapping-filter-add-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.mapping-filters-settings .mapping-filter-add-buttons .button {
+    margin: 0;
+}
+
+.mapping-filters-settings .mapping-filter-property-error {
+    color: #a91919;
+    margin: 8px 0 0;
+}
+
+.mapping-filters-settings .chosen-single[aria-invalid="true"] {
+    border-color: #a91919;
+}

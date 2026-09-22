@@ -205,103 +205,48 @@ function MappingBlock(mapDiv, timelineDiv) {
         L.DomEvent.disableScrollPropagation(filterDiv[0]);
         L.DomEvent.on(filterDiv[0], 'keydown', L.DomEvent.stopPropagation);
     }
-    const filterButtons = filterDiv.find('.mapping-template-buttons');
-    filterButtons.empty();
-    filterDiv.prop('hidden', true);
-    const templateButtons = new Map();
     const filterLayers = [];
-    const excludedTemplates = new Set();
     let timeline = null;
     let currentTimelineEvent = null;
     const timelineFeatures = L.featureGroup().addTo(map);
     let updateTimelineView = function() {};
-    const matchesTemplate = function(layer) {
-        return !excludedTemplates.has(String(layer.mapping_resource_template.id));
-    };
+    let filters = null;
+    const matchesFilters = layer => !filters || filters.matches(layer);
     const updateEmptyMessage = function() {
         const hasFeatures = currentTimelineEvent && currentTimelineEvent.start_date
             ? timelineFeatures.getLayers().length > 0
-            : filterLayers.some(entry => matchesTemplate(entry.layer));
+            : filterLayers.some(entry => matchesFilters(entry.layer));
         filterDiv.find('.mapping-template-empty').prop('hidden', hasFeatures);
     };
-    const setFilterButtonColor = function(button, color) {
-        // Match the marker colour supplied by the module's colour configuration.
-        if (!/^#(?:[a-f0-9]{3}|[a-f0-9]{6}|[a-f0-9]{8})$/i.test(color || '')) {
-            color = '#6699ff';
-        }
-        let hex = color.slice(1);
-        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
-        const alpha = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
-        const channels = [0, 2, 4].map(offset => {
-            const value = (parseInt(hex.slice(offset, offset + 2), 16) * alpha + 255 * (1 - alpha)) / 255;
-            return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    const refreshFeatureGroups = function() {
+        // Rebuild each group in bulk so filtering an expanded cluster also resets its index.
+        featuresPoint.clearLayers();
+        featuresPoly.clearLayers();
+        filterLayers.forEach(function(entry) {
+            if (matchesFilters(entry.layer)) entry.group.addLayer(entry.layer);
         });
-        const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-        button[0].style.setProperty('--mapping-category-color', color);
-        button[0].style.setProperty('--mapping-category-text', luminance > 0.179 ? '#000' : '#fff');
     };
-    filterDiv.find('.mapping-template-toggle').off('click.mappingTemplates').on('click.mappingTemplates', function() {
-        const expanded = this.getAttribute('aria-expanded') !== 'true';
-        $(this).attr('aria-expanded', String(expanded)).text($(this).data(expanded ? 'hide-label' : 'show-label'));
-        filterDiv.find('.mapping-template-body').prop('hidden', !expanded);
-        filterDiv.toggleClass('is-collapsed', !expanded);
-    });
-    const registerFilterLayer = filterDiv.length ? function(layer, type) {
-        const template = layer.mapping_resource_template;
-        const key = String(template.id);
-        const group = type === 'Point' ? featuresPoint : featuresPoly;
-        filterLayers.push({layer: layer, group: group});
-        if (!matchesTemplate(layer) && group.hasLayer(layer)) {
-            group.removeLayer(layer);
-        }
-        if (!templateButtons.has(key)) {
-            const button = $('<button>', {type: 'button', 'data-template-id': key, 'aria-pressed': String(!excludedTemplates.has(key))})
-                .text(template.label || filterDiv.data('no-template'))
-                .attr('aria-label', template.label || filterDiv.data('no-template'));
-            setFilterButtonColor(button, template.color);
-            templateButtons.set(key, button);
-            // Insert without recreating existing buttons, preserving keyboard focus.
-            const next = filterButtons.children('[data-template-id]').toArray().find(element =>
-                element.textContent.localeCompare(button.text()) > 0
-            );
-            if (next) {
-                button.insertBefore(next);
-            } else {
-                button.appendTo(filterButtons);
-            }
-            filterDiv.prop('hidden', false);
-        }
-    } : null;
-    filterDiv.off('click.mappingTemplates').on('click.mappingTemplates', 'button[data-template-id]', function() {
-        const templateId = this.dataset.templateId;
-        if (templateId === 'all') {
-            excludedTemplates.clear();
-        } else if (excludedTemplates.has(templateId)) {
-            excludedTemplates.delete(templateId);
-        } else {
-            excludedTemplates.add(templateId);
-        }
-        filterButtons.children('button').each(function() {
-            $(this).attr('aria-pressed', String(!excludedTemplates.has(this.dataset.templateId)));
-        });
+    const applyFilters = function() {
         map.closePopup();
         MappingModule.clearMarkerHighlight(map);
-        if (map.mapping_close_sidebar) {
-            map.mapping_close_sidebar();
-        }
+        if (map.mapping_close_sidebar) map.mapping_close_sidebar();
         timelineFeatures.clearLayers();
-        filterLayers.forEach(function(entry) {
-            if (matchesTemplate(entry.layer)) {
-                if (!entry.group.hasLayer(entry.layer)) {
-                    entry.group.addLayer(entry.layer);
-                }
-            } else if (entry.group.hasLayer(entry.layer)) {
-                entry.group.removeLayer(entry.layer);
-            }
-        });
+        if (!timeline) refreshFeatureGroups();
         updateTimelineView();
         updateEmptyMessage();
-    });
+    };
+    if (filterDiv.length) {
+        filters = new MappingFilters(filterDiv[0], mapData.filters || {
+            rows: [{type: 'resource_template'}]
+        }, applyFilters);
+        map.on('unload', function() { filters.destroy(); });
+    }
+    const registerFilterLayer = filters ? function(layer, type) {
+        const group = type === 'Point' ? featuresPoint : featuresPoly;
+        filterLayers.push({layer, group});
+        filters.register(layer);
+        if (map.hasLayer(features) && !matchesFilters(layer) && group.hasLayer(layer)) group.removeLayer(layer);
+    } : null;
 
     // Load features synchronously.
     mapDiv.closest('.mapping-block').find('.mapping-feature-popup-content').each(function() {
@@ -330,6 +275,7 @@ function MappingBlock(mapDiv, timelineDiv) {
     // Load features asynchronously.
     if (getFeaturesUrl) {
         const onFeaturesLoad = function() {
+            if (filters) filters.render();
             updateTimelineView(false);
             updateEmptyMessage();
             if (!map.mapping_map_interaction) {
@@ -371,7 +317,7 @@ function MappingBlock(mapDiv, timelineDiv) {
         const filteredEventFeatures = function(event) {
             const resourceFeatures = featuresByResource[timelineEventResourceId(event)];
             if (!resourceFeatures) return null;
-            const layers = resourceFeatures.getLayers().filter(matchesTemplate);
+            const layers = resourceFeatures.getLayers().filter(matchesFilters);
             return layers.length ? L.featureGroup(layers) : null;
         };
         updateTimelineView = function(setView = true) {
@@ -427,6 +373,7 @@ function MappingBlock(mapDiv, timelineDiv) {
                 // Changed to the title slide. Set the default map view.
                 timelineFeatures.clearLayers();
                 map.addLayer(features);
+                if (filters) refreshFeatureGroups();
                 if (setView) setDefaultView();
             }
         };
@@ -442,7 +389,7 @@ $(document).ready( function() {
     $('.mapping-block:visible').each(function() {
         const blockDiv = $(this);
         MappingBlock(
-            blockDiv.children('.mapping-map'),
+            blockDiv.find('.mapping-map').first(),
             blockDiv.children('.mapping-timeline, .tl-timeline')
         );
     });
