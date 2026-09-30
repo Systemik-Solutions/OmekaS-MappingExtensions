@@ -603,50 +603,53 @@
     padding-top: 10px;
     border-top: 1px solid #edf0f2;
 }
-.mapping-block .mapping-template-filter .choices {
-    --choices-font-size-md: 12px;
-    --choices-font-size-sm: 12px;
-    --choices-inner-padding: 5px 7px;
-    --choices-dropdown-item-padding: 7px 9px;
-    --choices-border-radius: 6px;
-    --choices-primary-color: #365770;
-    --choices-bg-color: #fff;
-    --choices-highlighted-color: #edf2f6;
-    margin: 0;
-    font-family: inherit;
-    font-size: 12px;
-}
-.mapping-block .mapping-template-filter .choices__inner {
-    min-height: 36px;
-}
-.mapping-block .mapping-template-filter .choices__input {
-    margin: 0;
-    padding: 3px 0;
-    min-height: 24px;
-    font-family: inherit !important;
-    font-size: 12px;
-    background: transparent;
-    box-shadow: none;
-}
-/* Keep dropdowns inside the scrollable panel, including fullscreen maps. */
-.mapping-block .mapping-template-filter .choices__list--dropdown {
-    position: static;
-    margin-top: 3px;
-    word-break: normal;
-    overflow-wrap: anywhere;
-}
-.mapping-block .mapping-template-filter .choices__list--dropdown .choices__list {
-    max-height: 160px;
-}
-.mapping-block .mapping-template-filter .choices__button {
-    min-height: 20px;
-    min-width: 20px;
-    margin: 0 0 0 5px;
-    padding: 0;
+.mapping-block .mapping-template-filter .mapping-filter-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 28px;
+    margin: 0 0 6px;
+    padding: 2px 0;
     border: 0;
     border-radius: 0;
-    background-color: transparent;
-    box-shadow: none;
+    background: transparent;
+    color: #56636e;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+}
+.mapping-block .mapping-filter-section-toggle::after {
+    content: '';
+    flex: 0 0 6px;
+    height: 6px;
+    margin-right: 3px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+}
+.mapping-block .mapping-filter-section-toggle[aria-expanded="false"]::after {
+    transform: rotate(-45deg);
+}
+.mapping-block .mapping-property-tags {
+    gap: 6px;
+}
+.mapping-block .mapping-property-tags button {
+    padding: 4px 9px;
+    border-radius: 18px;
+}
+.mapping-block .mapping-property-tags button[aria-pressed="false"] {
+    background: #edf2f6;
+    border-color: #d5dfe7;
+    color: #344957;
+}
+.mapping-block .mapping-property-tags button[aria-pressed="true"] {
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+.mapping-block .mapping-filter-no-values {
+    font-size: 12px;
+    color: #56636e;
 }
 
 @container (max-width: 600px) {

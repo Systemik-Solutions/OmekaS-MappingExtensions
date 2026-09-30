@@ -33,8 +33,8 @@ class TimelineFieldset extends Fieldset
             'name' => 'o:block[__blockIndex__][o:data][timeline][fly_to]',
             'options' => [
                 'label' => 'Fly to', // @translate
-                'info' => 'Select the map view to fly to when navigating between events.', // @translate
-                'empty_option' => 'Default view', // @translate
+                'info' => 'Select the maximum zoom when focusing the selected timeline item. Filter changes keep the current map view.', // @translate
+                'empty_option' => 'Event marker, zoom 13 (default)', // @translate
                 'value_options' => [
                     '0' => 'Event marker, zoom 0', // @translate
                     '2' => 'Event marker, zoom 2', // @translate
@@ -43,6 +43,7 @@ class TimelineFieldset extends Fieldset
                     '8' => 'Event marker, zoom 8', // @translate
                     '10' => 'Event marker, zoom 10', // @translate
                     '12' => 'Event marker, zoom 12', // @translate
+                    '13' => 'Event marker, zoom 13', // @translate
                     '14' => 'Event marker, zoom 14', // @translate
                     '16' => 'Event marker, zoom 16', // @translate
                     '18' => 'Event marker, zoom 18', // @translate
@@ -104,10 +105,23 @@ class TimelineFieldset extends Fieldset
         }
         $this->add([
             'type' => 'select',
+            'name' => 'o:block[__blockIndex__][o:data][timeline][row_group_by]',
+            'options' => [
+                'label' => 'Group timeline rows by', // @translate
+                'info' => 'Keep each category in a separate labelled band. Overlapping events may use adjacent rows within that category.', // @translate
+                'value_options' => [
+                    '' => 'None (automatic rows)', // @translate
+                    'resource_template' => 'Resource template', // @translate
+                    'resource_class' => 'Resource class', // @translate
+                ],
+            ],
+        ]);
+        $this->add([
+            'type' => 'select',
             'name' => 'o:block[__blockIndex__][o:data][timeline][marker_rows]',
             'options' => [
                 'label' => 'Maximum timeline marker rows', // @translate
-                'info' => 'Set the maximum number of rows available for timeline markers. More rows make the timeline navigation taller and reduce marker overlap.', // @translate
+                'info' => 'Set the maximum number of rows available for timeline markers. More rows make the timeline navigation taller and reduce marker overlap. When rows are grouped, the timeline grows as needed to show every category.', // @translate
                 'value_options' => [
                     '4' => '4', // @translate
                     '6' => '6', // @translate
@@ -149,6 +163,7 @@ class TimelineFieldset extends Fieldset
                 'text_color' => '',
                 'background_color' => '',
                 'marker_rows' => '4',
+                'row_group_by' => '',
                 'data_type_properties' => null,
             ],
         ];
@@ -181,6 +196,9 @@ class TimelineFieldset extends Fieldset
             if (is_string($color) && preg_match('/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/i', $color)) {
                 $data['timeline'][$key] = $color;
             }
+        }
+        if (in_array($rawData['timeline']['row_group_by'] ?? '', ['resource_template', 'resource_class'], true)) {
+            $data['timeline']['row_group_by'] = $rawData['timeline']['row_group_by'];
         }
         if (isset($rawData['timeline']['marker_rows'])
             && in_array((string) $rawData['timeline']['marker_rows'], ['4', '6', '8', '10'], true)

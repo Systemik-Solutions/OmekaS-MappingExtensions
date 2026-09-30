@@ -11,6 +11,9 @@ $filterId = 'mapping-template-options-' . uniqid();
 if ($isTimeline) {
     $classes[] = 'timeline';
     $classes[] = 'timeline-' . ($data['timeline']['layout'] ?? 'below');
+    if (!empty($data['timeline']['row_group_by'])) {
+        $classes[] = 'timeline-grouped';
+    }
     foreach (['font_family' => 'font', 'text_color' => 'text', 'background_color' => 'background'] as $key => $variable) {
         if (!empty($data['timeline'][$key])) {
             $classes[] = 'timeline-custom-' . $variable;
@@ -28,10 +31,7 @@ if ($isTimeline) {
         data-no-class="<?php echo $this->escapeHtml($this->translate('No resource class')); ?>"
         data-template-label="<?php echo $this->escapeHtml($this->translate('Resource templates')); ?>"
         data-class-label="<?php echo $this->escapeHtml($this->translate('Resource classes')); ?>"
-        data-all-values="<?php echo $this->escapeHtml($this->translate('All values')); ?>"
-        data-search-values="<?php echo $this->escapeHtml($this->translate('Search values')); ?>"
-        data-no-values="<?php echo $this->escapeHtml($this->translate('No values available')); ?>"
-        data-no-results="<?php echo $this->escapeHtml($this->translate('No matching values')); ?>">
+        data-no-values="<?php echo $this->escapeHtml($this->translate('No values available')); ?>">
         <div class="mapping-template-header">
             <h3><?php echo $this->translate('Filters'); ?></h3>
             <div class="mapping-template-actions">

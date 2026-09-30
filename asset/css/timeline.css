@@ -6,7 +6,7 @@
 }
 
 .mapping-block.timeline > :is(.mapping-map, .mapping-sidebar-layout),
-.mapping-block.timeline > :is(.mapping-timeline, .tl-timeline) {
+.mapping-block.timeline > :is(.mapping-timeline, .tl-timeline, .mapping-timeline-layout) {
   width: 100%;
   min-width: 0;
 }
@@ -44,7 +44,7 @@
   .mapping-block.timeline-beside > .mapping-template-filter {
     grid-column: 1 / -1;
   }
-  .mapping-block.timeline-beside > :is(.mapping-timeline, .tl-timeline) {
+  .mapping-block.timeline-beside > :is(.mapping-timeline, .tl-timeline, .mapping-timeline-layout) {
     grid-column: 1;
     grid-row: 2;
   }
@@ -80,4 +80,56 @@
 .mapping-block.timeline-beside > .mapping-timeline-empty {
   grid-column: 1;
   grid-row: 2;
+}
+
+/* Give category labels their own column so panning markers cannot cover them. */
+.mapping-timeline-layout {
+  display: grid;
+  grid-template-columns: clamp(120px, 18%, 180px) minmax(0, 1fr);
+}
+
+.mapping-timeline-layout > .tl-timeline,
+.mapping-timeline-layout > .mapping-timeline {
+  min-width: 0;
+  width: 100%;
+}
+
+.mapping-timeline-group-labels {
+  position: relative;
+  border-right: 1px solid #ddd;
+}
+
+.mapping-timeline-group-label {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  overflow-wrap: anywhere;
+  color: var(--mapping-timeline-text, #444);
+  font-family: var(--mapping-timeline-font, inherit);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow: none;
+  background: var(--mapping-timeline-background, #f2f2f2);
+}
+
+.mapping-timeline-group-label:nth-child(odd) {
+  background: var(--mapping-timeline-background, #fafafa);
+}
+
+.mapping-block.timeline-grouped .tl-timegroup-message {
+  display: none;
+}
+
+/* Move category backgrounds and their labels together during zoom/resize. */
+.mapping-block.timeline-grouped .tl-timegroup {
+  transition: none;
+}
+
+.mapping-block.timeline-grouped.timeline-custom-background .tl-timegroup {
+  background-color: var(--mapping-timeline-background);
 }

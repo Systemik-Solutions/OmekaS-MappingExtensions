@@ -208,6 +208,8 @@ function MappingBlock(mapDiv, timelineDiv) {
     const filterLayers = [];
     let timeline = null;
     let currentTimelineEvent = null;
+    let timelineFlight = false;
+    map.on('moveend', function() { timelineFlight = false; });
     const timelineFeatures = L.featureGroup().addTo(map);
     let updateTimelineView = function() {};
     let filters = null;
@@ -226,13 +228,36 @@ function MappingBlock(mapDiv, timelineDiv) {
             if (matchesFilters(entry.layer)) entry.group.addLayer(entry.layer);
         });
     };
+    map.on('mapping:sidebarclosed', function() {
+        map.stop();
+        map.mapping_map_interaction = true;
+        currentTimelineEvent = null;
+        timelineFeatures.clearLayers();
+        map.addLayer(features);
+        if (filters) refreshFeatureGroups();
+        updateEmptyMessage();
+        const bounds = features.getBounds();
+        if (bounds.isValid()) {
+            // The sidebar has closed and resized the map before this event.
+            // Fit the remaining pins, never zooming in on a lone result.
+            map.fitBounds(bounds, {padding: [20, 20], maxZoom: map.getZoom()});
+        }
+    });
     const applyFilters = function() {
+        // Filtering changes visibility, not the visitor's chosen map position.
+        // Leaflet's public stop() calls setZoom(), even when no animation is
+        // running. Cancel only our pending flight, without snapping its zoom.
+        if (timelineFlight) {
+            map._stop();
+            map._moveEnd(true);
+        }
+        map.mapping_map_interaction = true;
         map.closePopup();
         MappingModule.clearMarkerHighlight(map);
         if (map.mapping_close_sidebar) map.mapping_close_sidebar();
         timelineFeatures.clearLayers();
         if (!timeline) refreshFeatureGroups();
-        updateTimelineView();
+        updateTimelineView(false);
         updateEmptyMessage();
     };
     if (filterDiv.length) {
@@ -304,6 +329,15 @@ function MappingBlock(mapDiv, timelineDiv) {
     setDefaultView();
 
     if (timelineDiv && timelineDiv.length) {
+        let categoryLabels;
+        if (timelineDiv.parent().hasClass('mapping-timeline-layout')) {
+            timelineDiv.siblings('.mapping-timeline-group-labels').remove();
+            timelineDiv.unwrap();
+        }
+        if (mapData.timeline.row_group_by) {
+            timelineDiv.wrap('<div class="mapping-timeline-layout"></div>');
+            categoryLabels = $('<div>', {class: 'mapping-timeline-group-labels', role: 'list'}).insertBefore(timelineDiv)[0];
+        }
         const timelineEventResourceId = function(event) {
             return event.resource_id || event.unique_id;
         };
@@ -314,13 +348,69 @@ function MappingBlock(mapDiv, timelineDiv) {
             timelineDiv.data('options')
         );
         timelineDiv[0].mapping_timeline = timeline;
+        if (mapData.timeline.row_group_by) {
+            const groupLabels = new Map(timelineDiv.data('data').events.map(event => [event.group, event.mapping_group_label]));
+            const labelGroups = function(nav) {
+                // TimelineJS treats group labels as HTML. Group by stable IDs
+                // and keep plain-text labels in their own column, away from markers.
+                const labelsTop = categoryLabels.getBoundingClientRect().top;
+                categoryLabels.replaceChildren(...nav._groups.map(group => {
+                    const band = group._el.container.getBoundingClientRect();
+                    const label = document.createElement('div');
+                    label.className = 'mapping-timeline-group-label';
+                    label.setAttribute('role', 'listitem');
+                    label.textContent = groupLabels.get(group.data.label) || group.data.label;
+                    label.title = label.textContent;
+                    label.style.top = (band.top - labelsTop) + 'px';
+                    label.style.height = band.height + 'px';
+                    return label;
+                }));
+            };
+            const prepareTimelineGroups = function() {
+                const nav = timeline._timenav;
+                if (!nav || !nav.timescale || nav.mappingGroupsPrepared) return;
+                nav.mappingGroupsPrepared = true;
+                const positionGroups = nav._positionGroups;
+                nav._positionGroups = function() {
+                    positionGroups.apply(this, arguments);
+                    // Join neighbouring bands and extend the last to the visible
+                    // date axis: the compact nav is taller than its internal height.
+                    const axisTop = this._el.timeaxis_background.offsetTop;
+                    this._groups.forEach((group, index) => {
+                        const band = group._el.container;
+                        const next = this._groups[index + 1];
+                        const bottom = next ? parseFloat(next._el.container.style.top) : axisTop;
+                        band.style.height = Math.max(0, bottom - parseFloat(band.style.top)) + 'px';
+                    });
+                    labelGroups(this);
+                };
+                // TimelineJS recalculates marker rows on zoom/resize, but leaves
+                // each existing band's row count (and sometimes its height) stale.
+                const assignRows = nav._assignRowsToMarkers;
+                nav._assignRowsToMarkers = function() {
+                    const rows = new Map(this.timescale.getGroupLabels().map(group => [group.label, group.rows]));
+                    this._groups.forEach(group => { group.data.rows = rows.get(group.data.label) || 1; });
+                    assignRows.apply(this, arguments);
+                    this._positionGroups();
+                };
+                // A redraw creates new bands; remove the old ones first.
+                const createGroups = nav._createGroups;
+                nav._createGroups = function() {
+                    this._groups.forEach(group => group._el.container.remove());
+                    createGroups.apply(this, arguments);
+                };
+                nav._assignRowsToMarkers();
+            };
+            timeline.on('loaded', prepareTimelineGroups);
+            prepareTimelineGroups();
+        }
         const filteredEventFeatures = function(event) {
             const resourceFeatures = featuresByResource[timelineEventResourceId(event)];
             if (!resourceFeatures) return null;
             const layers = resourceFeatures.getLayers().filter(matchesFilters);
             return layers.length ? L.featureGroup(layers) : null;
         };
-        updateTimelineView = function(setView = true) {
+        updateTimelineView = function(setView = false) {
             const currentEvent = currentTimelineEvent;
             map.closePopup();
             MappingModule.clearMarkerHighlight(map);
@@ -349,38 +439,57 @@ function MappingBlock(mapDiv, timelineDiv) {
                         }
                     });
                 }
-                if (setView) {
-                    if ($.isNumeric(mapData.timeline.fly_to)) {
-                        const bounds = timelineFeatures.getBounds();
-                        if (bounds.isValid()) {
-                            map.flyToBounds(bounds, {maxZoom: parseInt(mapData.timeline.fly_to, 10)});
-                        }
-                    } else {
-                        setDefaultView();
-                    }
-                }
                 if (eventFeatures) {
-                    // Use the same interaction as clicking the corresponding pin.
-                    // For an item with several locations, open its first point.
                     const eventLayers = eventFeatures.getLayers();
                     const selectedLayer = eventLayers.find(layer => layer.getLatLng) || eventLayers[0];
-                    selectedLayer.fire('click');
-                    if (selectedLayer.getPopup()) {
-                        selectedLayer.openPopup();
+                    if (setView) {
+                        // Only timeline navigation opens details and focuses the site.
+                        // Opening the sidebar first gives the map its final width.
+                        selectedLayer.fire('click');
+                        if (selectedLayer.getPopup()) {
+                            selectedLayer.openPopup();
+                        }
+                        const bounds = eventFeatures.getBounds();
+                        if (bounds.isValid()) {
+                            const maxZoom = $.isNumeric(mapData.timeline.fly_to)
+                                ? parseInt(mapData.timeline.fly_to, 10) : 13;
+                            timelineFlight = true;
+                            map.flyToBounds(bounds, {maxZoom});
+                        }
+                    } else {
+                        // Keep the selection ring without popup auto-pan or sidebar changes.
+                        MappingModule.highlightMarker(map, selectedLayer);
                     }
                 }
             } else {
-                // Changed to the title slide. Set the default map view.
+                // Restore all eligible features without resetting the map position.
                 timelineFeatures.clearLayers();
                 map.addLayer(features);
                 if (filters) refreshFeatureGroups();
-                if (setView) setDefaultView();
             }
         };
         timeline.on('change', function(e) {
             currentTimelineEvent = timeline.config.event_dict[e.unique_id] || null;
-            updateTimelineView();
+            updateTimelineView(true);
             updateEmptyMessage();
+        });
+        // TimelineJS emits no change when the active event is clicked again.
+        // Allow that event to refocus the map after panning or changing filters.
+        const refocusActiveEvent = function(event) {
+            if (event.type === 'keydown' && !['Enter', 'Space'].includes(event.code)) return;
+            const marker = event.target.closest('.tl-timemarker-active');
+            const activeEvent = timeline.config.event_dict[timeline.current_id];
+            if (marker && activeEvent && activeEvent.start_date) {
+                currentTimelineEvent = activeEvent;
+                updateTimelineView(true);
+                updateEmptyMessage();
+            }
+        };
+        timelineDiv[0].addEventListener('click', refocusActiveEvent, true);
+        timelineDiv[0].addEventListener('keydown', refocusActiveEvent, true);
+        map.on('unload', function() {
+            timelineDiv[0].removeEventListener('click', refocusActiveEvent, true);
+            timelineDiv[0].removeEventListener('keydown', refocusActiveEvent, true);
         });
     }
 }
@@ -390,7 +499,7 @@ $(document).ready( function() {
         const blockDiv = $(this);
         MappingBlock(
             blockDiv.find('.mapping-map').first(),
-            blockDiv.children('.mapping-timeline, .tl-timeline')
+            blockDiv.find('.mapping-timeline, .tl-timeline').first()
         );
     });
 });

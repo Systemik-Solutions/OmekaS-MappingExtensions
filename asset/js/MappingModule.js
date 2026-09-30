@@ -552,7 +552,14 @@ const MappingModule = {
             }
         };
 
-        sidebar.querySelector(".mapping-sidebar-close").addEventListener("click", closeSidebar);
+        // Only an explicit dismissal restores the overview. Internal closes
+        // (for example, while applying filters) must leave the map view alone.
+        const dismissSidebar = function() {
+            const wasOpen = sidebar.classList.contains("is-open");
+            closeSidebar();
+            if (wasOpen) map.fire("mapping:sidebarclosed");
+        };
+        sidebar.querySelector(".mapping-sidebar-close").addEventListener("click", dismissSidebar);
         map.on("click", function(event) {
             if (!map.mapping_sidebar_mode || !sidebar.classList.contains("is-open")) {
                 return;
@@ -564,12 +571,12 @@ const MappingModule = {
             )) {
                 return;
             }
-            closeSidebar();
+            dismissSidebar();
         });
         sidebar.addEventListener("keydown", function(event) {
             if (event.key === "Escape") {
                 event.stopPropagation();
-                closeSidebar();
+                dismissSidebar();
             }
         });
         map.on("popupclose", function() {

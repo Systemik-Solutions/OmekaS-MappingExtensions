@@ -40,14 +40,19 @@ abstract class AbstractMap extends AbstractBlockLayout
 
     public function prepareRender(PhpRenderer $view)
     {
+        // Refresh interactive assets while changes share the same module version.
+        $interactiveAssetUrl = static function(string $asset) use ($view): string {
+            $url = $view->assetUrl($asset, 'MappingExtensions');
+            $revision = substr(hash_file('sha256', dirname(__DIR__, 3) . '/asset/' . $asset), 0, 12);
+            return $url . (strpos($url, '?') === false ? '?' : '&') . 'rev=' . $revision;
+        };
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet/dist/leaflet.css', 'MappingExtensions'));
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet.markercluster/dist/MarkerCluster.css', 'MappingExtensions'));
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet.markercluster/dist/MarkerCluster.Default.css', 'MappingExtensions'));
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet-groupedlayercontrol/dist/leaflet.groupedlayercontrol.min.css', 'MappingExtensions'));
         $view->headLink()->appendStylesheet($view->assetUrl('node_modules/leaflet.fullscreen/Control.FullScreen.css', 'MappingExtensions'));
 
-        $view->headLink()->appendStylesheet($view->assetUrl('node_modules/choices.js/public/assets/styles/choices.min.css', 'MappingExtensions'));
-        $view->headLink()->appendStylesheet($view->assetUrl('css/mapping.css', 'MappingExtensions'));
+        $view->headLink()->appendStylesheet($interactiveAssetUrl('css/mapping.css'));
 
         $view->headScript()->appendFile($view->assetUrl('node_modules/leaflet/dist/leaflet.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('node_modules/leaflet.markercluster/dist/leaflet.markercluster-src.js', 'MappingExtensions'));
@@ -58,11 +63,10 @@ abstract class AbstractMap extends AbstractBlockLayout
         $view->headScript()->appendFile('https://cdn.jsdelivr.net/npm/@allmaps/leaflet/dist/bundled/allmaps-leaflet-1.9.umd.js');
 
         $view->headScript()->appendFile($view->assetUrl('js/MappingModule.js', 'MappingExtensions'));
-        $view->headScript()->appendFile($view->assetUrl('node_modules/choices.js/public/assets/scripts/choices.min.js', 'MappingExtensions'));
-        $view->headScript()->appendFile($view->assetUrl('js/mapping-filters.js', 'MappingExtensions'));
+        $view->headScript()->appendFile($interactiveAssetUrl('js/mapping-filters.js'));
         $view->headScript()->appendFile($view->assetUrl('js/control.opacity.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('js/control.fit-bounds.js', 'MappingExtensions'));
-        $view->headScript()->appendFile($view->assetUrl('js/mapping-block.js', 'MappingExtensions'));
+        $view->headScript()->appendFile($interactiveAssetUrl('js/mapping-block.js'));
     }
 
     /**
@@ -89,7 +93,7 @@ abstract class AbstractMap extends AbstractBlockLayout
      * @param srray $data
      * @return array
      */
-    public function getTimelineOptions(array $data)
+    public function getTimelineOptions(array $data, array $events = [])
     {
         $options = [
             'debug' => false,
@@ -103,6 +107,16 @@ abstract class AbstractMap extends AbstractBlockLayout
             $timenavHeight = 175 + (($markerRows - 4) * 30);
             $options['timenav_height'] = $timenavHeight;
             $options['timenav_height_min'] = $timenavHeight;
+        }
+
+        if (!empty($data['timeline']['row_group_by'])) {
+            // Native TimelineJS groups need at least one readable row per category.
+            // Grow the container as well as the navigation so no category is clipped.
+            $groupCount = count(array_unique(array_column($events, 'group')));
+            $height = 55 + max($markerRows, $groupCount) * 45;
+            $options['marker_height_min'] = 45;
+            $options['timenav_height'] = $height;
+            $options['timenav_height_min'] = $height;
         }
 
         return $options;
@@ -157,12 +171,16 @@ abstract class AbstractMap extends AbstractBlockLayout
      * @param array $dataTypeProperties
      * @return array
      */
-    public function getTimelineEvents($itemId, array $dataTypeProperties, $view, $has_features = true)
+    public function getTimelineEvents($itemId, array $dataTypeProperties, $view, $has_features = true, string $groupBy = '')
     {
         $query = [
             'id' => $itemId,
-            'has_features' => $has_features,
         ];
+        // Linked items borrow their map location, whether or not they also have
+        // geometry of their own. Only require geometry for original items.
+        if ($has_features) {
+            $query['has_features'] = true;
+        }
         $item = $view->api()->searchOne('items', $query)->getContent();
         if (!$item) {
             // This item has no features.
@@ -202,6 +220,18 @@ abstract class AbstractMap extends AbstractBlockLayout
                 'text' => $item->displayDescription(),
             ],
         ];
+
+        if ($groupBy === 'resource_template') {
+            $template = $item->resourceTemplate();
+            $baseEvent['group'] = 'resource_template:' . ($template ? $template->id() : 0);
+            $baseEvent['mapping_group_label'] = $template ? $template->label() : $view->translate('No resource template');
+        } elseif ($groupBy === 'resource_class') {
+            $class = $item->resourceClass();
+            // The term distinguishes classes with the same label in different vocabularies.
+            $baseEvent['group'] = 'resource_class:' . ($class ? $class->id() : 0);
+            $baseEvent['mapping_group_label'] = $class ? sprintf('%s (%s)', $view->translate($class->label()), $class->term())
+                : $view->translate('No resource class');
+        }
 
         $media = $item->primaryMedia();
         if ($media) {

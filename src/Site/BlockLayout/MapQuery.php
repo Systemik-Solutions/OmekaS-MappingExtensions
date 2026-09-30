@@ -133,7 +133,7 @@ class MapQuery extends AbstractMap
                     // Original behavior: use the original item for timeline
                     $events = array_merge(
                         $events,
-                        $this->getTimelineEvents($itemId, $data['timeline']['data_type_properties'], $view) ?: []
+                        $this->getTimelineEvents($itemId, $data['timeline']['data_type_properties'], $view, true, $data['timeline']['row_group_by']) ?: []
                     );
                     continue;
                 }
@@ -145,7 +145,7 @@ class MapQuery extends AbstractMap
                 foreach (array_keys($linkedIds) as $lid) {
                     $events = array_merge(
                         $events,
-                        $this->getTimelineEvents($lid, $data['timeline']['data_type_properties'], $view, false) ?: []
+                        $this->getTimelineEvents($lid, $data['timeline']['data_type_properties'], $view, false, $data['timeline']['row_group_by']) ?: []
                     );
                 }
             }
@@ -156,7 +156,7 @@ class MapQuery extends AbstractMap
             'featuresQuery' => $featuresQuery,
             'isTimeline' => $isTimeline,
             'timelineData' => $this->getTimelineData($events, $data, $view),
-            'timelineOptions' => $this->getTimelineOptions($data),
+            'timelineOptions' => $this->getTimelineOptions($data, $events),
         ]);
     }
 }

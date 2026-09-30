@@ -27,7 +27,7 @@ class MapFilterFieldset extends Fieldset
             'name' => 'property',
             'options' => [
                 'label' => 'Property', // @translate
-                'info' => 'Only properties with values on the current mapped items are available. All values of the selected property become dropdown options.', // @translate
+                'info' => 'Only properties with values on the current mapped items are available. All values of the selected property appear as clickable filter tags.', // @translate
                 'empty_option' => '',
                 'value_options' => [],
             ],

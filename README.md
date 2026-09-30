@@ -51,23 +51,42 @@ Map by attachments and Map by query blocks show their timeline at full width bel
 In the block's **Timeline** settings, choose **Timeline layout** to switch to a side-by-side
 layout on larger screens. Both layouts stack on small screens. The timeline shows only the date navigation; the separate
 slide/detail area is hidden. Selecting a timeline item highlights its map pin and opens its popup
-(or the configured marker sidebar).
+(or the configured marker sidebar). The map focuses on the selected item's locations using
+the **Fly to** maximum zoom (13 by default).
 
 The timeline keeps its default font and colours unless an override is supplied in the block editor. Set **Timeline font family** to a
 font stack already available on the site (for example `Georgia, serif`). **Timeline text colour**
 and **Timeline background colour** accept three- or six-digit hex colours such as `#333333`.
 Leave these fields blank to preserve the default timeline appearance. Each override applies independently.
 
+Use **Group timeline rows by** to organise dated items into labelled bands by **Resource template**
+or **Resource class**. Each row belongs to one category; overlapping events can use adjacent rows
+within the same category. Items without a template or class appear in a separate labelled band.
+Category labels stay in a fixed column so sliding event cards cannot cover them. The timeline
+grows when more categories need space, and the bands stay aligned when zooming or resizing.
+Choose **None (automatic rows)** to keep the original layout; this remains the default
+for existing and new blocks.
+
+Row grouping is independent of the map filters. Selecting an event still highlights its map pin
+and opens its details, subject to the active filters. In linked-items mode, the category belongs
+to the displayed linked item.
+
 The initial map shows all items with locations matching the block query or attachments, including
 items without dates. The timeline includes only items with a valid numeric timestamp or interval
 in the selected date property. Selecting a timeline event narrows the map to that event (and any
 contemporaneous events when enabled); returning to the initial timeline view restores all mapped
-items, subject to the map filters. In linked-items mode, dates belong to the displayed
+items, subject to the map filters, without resetting the current map view. In linked-items mode, dates belong to the displayed
 linked items.
+
+Closing the sidebar with its close button, Escape, or a click on the map background restores
+all mapped items matching the active filters, including undated items, and zooms out to fit them.
+The timeline stays at its current position; clicking its selected event again refocuses that site.
+Changing a filter still preserves the current map center and zoom.
 
 With **Show contemporaneous events** enabled, selecting an event shows every mapped item whose
 interval overlaps it, including timestamps within that interval. This works with both the default
-view and **Fly to** zoom settings; Fly to fits all matching features. Multiple date values on one
+and configured **Fly to** zoom settings; the map focuses on the selected item's locations while
+the other matching features remain available. Multiple date values on one
 item are checked individually, and each matching item is shown once. Map filters
 still apply.
 
@@ -80,9 +99,10 @@ to configure any combination of:
 
 - **Resource template** or **Resource class:** coloured category buttons. All categories start
   selected; clicking a button turns it grey and hides that category. Click again to restore it.
-- **Property values:** select a property, such as `schema:category`, for a searchable Choices.js
-  dropdown with multiple selections. Every distinct value found on the mapped items becomes an
-  option, including multiple values on one item. No selection means all values, including items
+- **Property values:** select a property, such as `schema:category`, to list its values as compact
+  clickable tags. Click tags to select any combination; click again to deselect. Every distinct
+  value found on the mapped items appears, including multiple values on one item.
+  No selection means all values, including items
   without that property. Linked resources and URI values are supported as well as text values.
 
 Click **Add property filter** again for each additional field. For example, one panel can contain
@@ -95,10 +115,12 @@ a property that is no longer present is retained and flagged for review.
 
 Each filter can have an optional display label. Selections within one filter are combined with
 OR; separate filters are combined with AND. **Reset Filters** clears every selection and restores
-all categories. **Hide** and **Show** collapse or expand the panel. The options come from all items
+all categories. Click a filter heading to collapse or expand that section; **Hide** and **Show**
+collapse or expand the whole panel. The options come from all items
 loaded for this map and remain available when another filter is applied.
 
-Filters apply to markers and shapes, including timeline selections. Timeline events remain
+Adding or removing filter selections, including **Reset Filters**, preserves the map's center
+and zoom. Filters apply to markers and shapes, including timeline selections. Timeline events remain
 available; an empty-state message appears when no mapped items match the current filters. In
 linked-items mode, filter values belong to the displayed linked item. Existing blocks keep their
 resource-template filter and its visibility setting until their configuration is changed.

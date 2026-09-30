@@ -6,12 +6,17 @@ All notable changes to this module will be documented in this file.
 
 ### Added
 
+- **Timeline category rows:** Added a Group timeline rows by setting for resource templates or resource classes in Map by attachments and Map by query blocks. Categories occupy separate labelled bands, with adjacent rows for overlapping events and room for every category. Automatic rows remain the default; grouping preserves map selection and filter behaviour.
 - **Multiple filter criteria:** Added separate editor buttons for template, class, and property filters, making it easier to combine both resource types with any number of property fields in one panel. Items must match every active filter.
-- **Configurable map filters:** Added a show/hide setting and multiple filters by resource template, resource class, or property. Property filters use searchable Choices.js multi-select dropdowns populated from all mapped values. Selections combine across filters and remain active during timeline navigation. Existing filter settings are preserved.
+- **Configurable map filters:** Added a show/hide setting and multiple filters by resource template, resource class, or property. Property values appear as compact, clickable tags populated from all mapped values. Filter sections can be collapsed independently. Selections combine across filters and remain active during timeline navigation. Existing filter settings are preserved.
 - **Legend visibility:** Added a Show legend checkbox under Groups for Map by attachments, Map by query, and Journey map blocks. Enabled by default for existing and new blocks; hiding the legend leaves marker colours and resource template filters unchanged.
 
 ### Fixed
 
+- **Sidebar overview:** Closing details with the close button, Escape, or the map background restores all pins matching the active filters, including undated items, and zooms out to fit them. Filter changes still preserve the current map view.
+- **Filter map position:** Preserve the current map center and zoom when changing or resetting filters, including during a timeline flight. Filter changes no longer call Leaflet's zoom setter. Only timeline item selection focuses a site, using its locations and the configured Fly to zoom (13 by default), without fitting unrelated contemporaneous items. Version the block script by its contents so browsers receive these fixes even before a module version change.
+- **Timeline category bands:** Align label and timeline band boundaries through the date axis, including after zooming or resizing, and remove stale bands on redraw.
+- **Linked-item timeline dates:** Include displayed linked items even when they also have map locations of their own.
 - **Filter editor validation:** Show an inline message and focus the visible property dropdown when a field is missing, instead of blocking Save with a hidden-control error. Disabled filters and removed blocks do not prevent saving.
 - **Filter property choices:** Limit the editor's property selector to fields used by the current mapped items. Refresh choices when the query, attachments, or linked-item settings change, and preserve saved filters whose properties are no longer used.
 - **Sidebar controls:** Dock item and cluster details beside wide maps and below narrow maps so the panel cannot cover zoom, fullscreen, legends, or filters. Keep the layout usable in fullscreen and restore the map width when details close.
