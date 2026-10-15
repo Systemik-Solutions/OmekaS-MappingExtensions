@@ -63,5 +63,6 @@ if ($isTimeline) {
         <div class="mapping-timeline" style="height: <?php echo (int) ($timelineOptions['timenav_height'] ?? 175); ?>px"
             data-data="<?php echo $this->escapeHtml(json_encode($timelineData)); ?>"
             data-options="<?php echo $this->escapeHtml(json_encode($timelineOptions)); ?>"></div>
+        <p class="mapping-timeline-empty mapping-timeline-filter-empty" role="status" hidden><?php echo $this->translate('No dated items match the selected filters.'); ?></p>
     <?php endif; ?>
 </div>

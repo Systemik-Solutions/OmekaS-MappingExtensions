@@ -13,6 +13,8 @@ All notable changes to this module will be documented in this file.
 
 ### Fixed
 
+- **Filter colours:** Property filter highlights use the same configured or automatic category colours as property-grouped map pins, including separate colours for choices from multi-valued items.
+- **Filtered timeline:** Hide non-matching timeline events when map filters change, restore them when selections are cleared, and show an empty message when no dated items match. Timeline navigation follows the filtered events without resetting the map view.
 - **Sidebar overview:** Closing details with the close button, Escape, or the map background restores all pins matching the active filters, including undated items, and zooms out to fit them. Filter changes still preserve the current map view.
 - **Filter map position:** Preserve the current map center and zoom when changing or resetting filters, including during a timeline flight. Filter changes no longer call Leaflet's zoom setter. Only timeline item selection focuses a site, using its locations and the configured Fly to zoom (13 by default), without fitting unrelated contemporaneous items. Version the block script by its contents so browsers receive these fixes even before a module version change.
 - **Timeline category bands:** Align label and timeline band boundaries through the date axis, including after zooming or resizing, and remove stale bands on redraw.

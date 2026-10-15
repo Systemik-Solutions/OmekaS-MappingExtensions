@@ -212,6 +212,8 @@ function MappingBlock(mapDiv, timelineDiv) {
     map.on('moveend', function() { timelineFlight = false; });
     const timelineFeatures = L.featureGroup().addTo(map);
     let updateTimelineView = function() {};
+    let updateTimelineFilters = function() {};
+    let featuresLoaded = false;
     let filters = null;
     const matchesFilters = layer => !filters || filters.matches(layer);
     const updateEmptyMessage = function() {
@@ -256,6 +258,7 @@ function MappingBlock(mapDiv, timelineDiv) {
         MappingModule.clearMarkerHighlight(map);
         if (map.mapping_close_sidebar) map.mapping_close_sidebar();
         timelineFeatures.clearLayers();
+        updateTimelineFilters();
         if (!timeline) refreshFeatureGroups();
         updateTimelineView(false);
         updateEmptyMessage();
@@ -300,7 +303,9 @@ function MappingBlock(mapDiv, timelineDiv) {
     // Load features asynchronously.
     if (getFeaturesUrl) {
         const onFeaturesLoad = function() {
+            featuresLoaded = true;
             if (filters) filters.render();
+            updateTimelineFilters();
             updateTimelineView(false);
             updateEmptyMessage();
             if (!map.mapping_map_interaction) {
@@ -341,6 +346,9 @@ function MappingBlock(mapDiv, timelineDiv) {
         const timelineEventResourceId = function(event) {
             return event.resource_id || event.unique_id;
         };
+        // TimelineJS converts date data in place. Keep pristine events for restoring filters.
+        const allTimelineEvents = JSON.parse(JSON.stringify(timelineDiv.data('data').events));
+        let updatingTimelineFilters = false;
 
         timeline = new TL.Timeline(
             timelineDiv[0],
@@ -410,6 +418,54 @@ function MappingBlock(mapDiv, timelineDiv) {
             const layers = resourceFeatures.getLayers().filter(matchesFilters);
             return layers.length ? L.featureGroup(layers) : null;
         };
+        const timelineContainer = timelineDiv.parent().hasClass('mapping-timeline-layout')
+            ? timelineDiv.parent() : timelineDiv;
+        const timelineEmpty = timelineContainer.siblings('.mapping-timeline-filter-empty');
+        let timelineReady = timeline.ready;
+        let timelineInitializing = !timelineReady;
+        updateTimelineFilters = function() {
+            // Wait for every feature page so later results are not mistaken for non-matches.
+            if (!filters || !featuresLoaded || !timelineReady) return;
+            const events = allTimelineEvents.filter(function(event) {
+                const resourceFeatures = featuresByResource[timelineEventResourceId(event)];
+                return resourceFeatures && resourceFeatures.getLayers().some(matchesFilters);
+            });
+            const eventIds = new Set(events.map(event => event.unique_id));
+            if (currentTimelineEvent && !eventIds.has(currentTimelineEvent.unique_id)) {
+                currentTimelineEvent = null;
+            }
+            timelineEmpty.prop('hidden', events.length > 0);
+            timelineContainer.toggle(events.length > 0);
+            // TimelineJS requires at least one event. Keep its internal data while
+            // the entire navigation is hidden, and restore matching events below.
+            if (!events.length) return;
+            const previousId = timeline.current_id;
+            updatingTimelineFilters = true;
+            try {
+                // Add before removing so switching between disjoint categories
+                // never gives TimelineJS an empty date range.
+                events.forEach(function(event) {
+                    if (!timeline.config.event_dict[event.unique_id]) {
+                        timeline.add(JSON.parse(JSON.stringify(event)));
+                    }
+                });
+                timeline.config.events.slice().forEach(function(event) {
+                    if (!eventIds.has(event.unique_id)) timeline.removeId(event.unique_id);
+                });
+                if (categoryLabels) timeline._timenav._createGroups();
+                timeline.updateDisplay();
+                timeline.goToId(eventIds.has(previousId) ? previousId : events[0].unique_id);
+            } finally {
+                updatingTimelineFilters = false;
+            }
+        };
+        timeline.on('loaded', function() {
+            timelineReady = true;
+            updateTimelineFilters();
+            // TimelineJS selects its first slide immediately after firing loaded.
+            // This is initialization, not a visitor choosing a map location.
+            queueMicrotask(function() { timelineInitializing = false; });
+        });
         updateTimelineView = function(setView = false) {
             const currentEvent = currentTimelineEvent;
             map.closePopup();
@@ -469,6 +525,9 @@ function MappingBlock(mapDiv, timelineDiv) {
             }
         };
         timeline.on('change', function(e) {
+            // Adding/removing timeline events can select a neighbour internally.
+            // Only a visitor's timeline navigation should move the map.
+            if (updatingTimelineFilters || timelineInitializing) return;
             currentTimelineEvent = timeline.config.event_dict[e.unique_id] || null;
             updateTimelineView(true);
             updateEmptyMessage();
@@ -491,6 +550,7 @@ function MappingBlock(mapDiv, timelineDiv) {
             timelineDiv[0].removeEventListener('click', refocusActiveEvent, true);
             timelineDiv[0].removeEventListener('keydown', refocusActiveEvent, true);
         });
+        updateTimelineFilters();
     }
 }
 

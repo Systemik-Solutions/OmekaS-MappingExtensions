@@ -33,6 +33,7 @@ class IndexController extends AbstractActionController
 
     /** Filter metadata is shared by all features of an item in this response. */
     private array $filterMetadata = [];
+    private array $colorPropertyIds = [];
 
     private bool $filterPropertiesOnly = false;
     private bool $filterPropertiesHasMore = false;
@@ -249,6 +250,14 @@ class IndexController extends AbstractActionController
                     $key = 'literal:' . $label;
                 }
                 $values[$key] = ['value' => $key, 'label' => $label];
+                if (($blockData['group_by_control']['group-by-select'] ?? '') === 'property_value'
+                    && trim((string) ($blockData['group_by_control']['property_value'] ?? '')) === $term
+                ) {
+                    // Resolve each choice separately: a multi-valued item may use
+                    // one pin colour but contribute several differently coloured choices.
+                    $values[$key]['color'] = $this->getPropertyValueColor($term,
+                        [trim((string) ($value->value() ?? (string) $value))], $blockData, $this->api());
+                }
             }
             $metadata['property:' . $term] = array_values($values);
         }
@@ -808,16 +817,6 @@ class IndexController extends AbstractActionController
                 return null;
             }
 
-            $propIdForTerm = null;
-            try {
-                $propRep = $api->searchOne('properties', ['term' => $term])->getContent();
-                if ($propRep) {
-                    $propIdForTerm = (int) $propRep->id();
-                }
-            } catch (\Exception $e) {
-                $propIdForTerm = null;
-            }
-
             $vals = $item->value($term, ['all' => true]) ?: [];
             if (!$vals) {
                 return null;
@@ -828,40 +827,33 @@ class IndexController extends AbstractActionController
                 $itemTexts[] = trim((string) ($v->value() ?? (string) $v));
             }
 
-            $hasConfiguredRow = false;
-
-            foreach ($colorRows as $row) {
-                $rowPropId = isset($row['property_value']) ? (int) $row['property_value'] : 0;
-                $needle    = trim((string) ($row['property_text'] ?? ''));
-
-                if ($needle === '') {
-                    continue;
-                }
-                if ($rowPropId && $propIdForTerm && $rowPropId !== $propIdForTerm) {
-                    continue;
-                }
-
-                $hasConfiguredRow = true;
-
-                foreach ($itemTexts as $txt) {
-                    if (strcasecmp($txt, $needle) === 0) {
-                        return $row['color'] ?? null;
-                    }
-                }
-            }
-
-            if (!$hasConfiguredRow) {
-                if (!empty($itemTexts)) {
-                    $first   = mb_strtolower($itemTexts[0]);
-                    $autoKey = 'pv:' . $term . ':' . $first;
-                    return $this->getAutoColor($autoKey);
-                }
-                return self::DEFAULT_COLOR;
-            }
-
-            return null;
+            return $this->getPropertyValueColor($term, $itemTexts, $blockData, $api);
         }
         return null;
+    }
+
+    /** Shared colour rules for property-grouped pins and individual filter choices. */
+    private function getPropertyValueColor(string $term, array $texts, array $blockData, $api): ?string
+    {
+        $propertyId = $this->getPropertyID($term, $api, $this->colorPropertyIds);
+        $hasConfiguredRow = false;
+        foreach ($blockData['node_colors']['rows'] ?? [] as $row) {
+            $rowPropertyId = (int) ($row['property_value'] ?? 0);
+            $needle = trim((string) ($row['property_text'] ?? ''));
+            if ($needle === '' || ($rowPropertyId && $propertyId && $rowPropertyId !== $propertyId)) {
+                continue;
+            }
+            $hasConfiguredRow = true;
+            foreach ($texts as $text) {
+                if (strcasecmp($text, $needle) === 0) {
+                    return $row['color'] ?? null;
+                }
+            }
+        }
+        if ($hasConfiguredRow) {
+            return null;
+        }
+        return $texts ? $this->getAutoColor('pv:' . $term . ':' . mb_strtolower($texts[0])) : self::DEFAULT_COLOR;
     }
 
     /**
