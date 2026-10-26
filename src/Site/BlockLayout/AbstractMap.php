@@ -33,7 +33,9 @@ abstract class AbstractMap extends AbstractBlockLayout
         $view->headScript()->appendFile($view->assetUrl('node_modules/leaflet-providers/leaflet-providers.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('node_modules/leaflet.fullscreen/Control.FullScreen.js', 'MappingExtensions'));
 
-        $view->headScript()->appendFile($view->assetUrl('js/mapping-block-form.js', 'MappingExtensions'));
+        $formScriptUrl = $view->assetUrl('js/mapping-block-form.js', 'MappingExtensions');
+        $formRevision = substr(hash_file('sha256', dirname(__DIR__, 3) . '/asset/js/mapping-block-form.js'), 0, 12);
+        $view->headScript()->appendFile($formScriptUrl . (strpos($formScriptUrl, '?') === false ? '?' : '&') . 'rev=' . $formRevision);
         $view->headScript()->appendFile($view->assetUrl('js/mapping-filters-form.js', 'MappingExtensions'));
         $view->headScript()->appendFile($view->assetUrl('js/control.default-view.js', 'MappingExtensions'));
     }
@@ -171,7 +173,7 @@ abstract class AbstractMap extends AbstractBlockLayout
      * @param array $dataTypeProperties
      * @return array
      */
-    public function getTimelineEvents($itemId, array $dataTypeProperties, $view, $has_features = true, string $groupBy = '')
+    public function getTimelineEvents($itemId, array $dataTypeProperties, $view, $has_features = true, string $groupBy = '', string $groupProperty = '')
     {
         $query = [
             'id' => $itemId,
@@ -243,6 +245,8 @@ abstract class AbstractMap extends AbstractBlockLayout
             ];
         }
 
+        $propertyGroups = $groupBy === 'property' && $groupProperty !== ''
+            ? $this->getTimelinePropertyGroups($item, $groupProperty, $view) : [[]];
         $events = [];
         foreach ($values as $index => $timelineValue) {
             $event = $baseEvent;
@@ -252,11 +256,55 @@ abstract class AbstractMap extends AbstractBlockLayout
 
             $event = $this->setTimelineEventDates($event, $timelineValue['data_type'], $timelineValue['value']);
             if ($event) {
-                $events[] = $event;
+                foreach ($propertyGroups as $group) {
+                    $groupEvent = array_merge($event, $group);
+                    if (isset($group['group'])) {
+                        // Each category/date needs its own stable event ID while
+                        // resource_id continues to identify the same map feature.
+                        $groupEvent['unique_id'] .= '-group-' . substr($group['group'], strlen('property:'));
+                    }
+                    $events[] = $groupEvent;
+                }
             }
         }
 
         return $events;
+    }
+
+    /** Group by value identity, using plain labels for the separate label column. */
+    private function getTimelinePropertyGroups($item, string $term, $view): array
+    {
+        $groups = [];
+        foreach ($item->value($term, ['all' => true]) ?: [] as $value) {
+            if ($value->isHidden()) {
+                continue;
+            }
+            if ($resource = $value->valueResource()) {
+                $key = 'resource:' . $resource->id();
+                $label = $resource->displayTitle();
+            } elseif ($value->uri()) {
+                $key = 'uri:' . $value->uri();
+                $label = trim((string) $value->value()) ?: $value->uri();
+            } else {
+                $label = trim((string) $value->value());
+                if ($label === '') {
+                    continue;
+                }
+                $key = 'literal:' . $label;
+            }
+            $groups[$key] = [
+                'group' => 'property:' . hash('sha256', $term . ':' . $key),
+                'mapping_group_label' => $label,
+                'mapping_group_property' => $term,
+                'mapping_group_value' => $key,
+            ];
+        }
+        return $groups ? array_values($groups) : [[
+            'group' => 'property:' . hash('sha256', $term . ':missing'),
+            'mapping_group_label' => $view->translate('No value'),
+            'mapping_group_property' => $term,
+            'mapping_group_value' => null,
+        ]];
     }
 
     private function setTimelineEventDates(array $event, $dataType, $value)

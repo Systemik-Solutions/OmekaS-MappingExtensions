@@ -6,6 +6,7 @@ All notable changes to this module will be documented in this file.
 
 ### Added
 
+- **Timeline rows by property:** Group timeline rows by any selected item property, such as schema:category, in Map by attachments and Map by query blocks. Items with multiple values appear in each category, missing values use a No value row, and category filters also hide non-selected rows. Timeline selections still focus the corresponding map pin.
 - **Timeline category rows:** Added a Group timeline rows by setting for resource templates or resource classes in Map by attachments and Map by query blocks. Categories occupy separate labelled bands, with adjacent rows for overlapping events and room for every category. Automatic rows remain the default; grouping preserves map selection and filter behaviour.
 - **Multiple filter criteria:** Added separate editor buttons for template, class, and property filters, making it easier to combine both resource types with any number of property fields in one panel. Items must match every active filter.
 - **Configurable map filters:** Added a show/hide setting and multiple filters by resource template, resource class, or property. Property values appear as compact, clickable tags populated from all mapped values. Filter sections can be collapsed independently. Selections combine across filters and remain active during timeline navigation. Existing filter settings are preserved.

@@ -333,8 +333,17 @@ $('#blocks').on('o:block-added', '.block[data-block-layout="mappingMapGroups"]',
 });
 
 // Handle setting the map for added blocks.
+const setTimelineRowProperty = function(block) {
+    const enabled = block.find('.mapping-timeline-row-group-by').val() === 'property';
+    block.find('.mapping-timeline-row-property').prop('disabled', !enabled)
+        .trigger('chosen:updated').closest('.field').toggle(enabled);
+};
+$(document).on('change', '.mapping-timeline-row-group-by', function() {
+    setTimelineRowProperty($(this).closest('.block'));
+});
 $('#blocks').on('o:block-added', '.block[data-block-layout^="mappingMap"]', function(e) {
     const block = $(this);
+    setTimelineRowProperty(block);
     setMap(block);
     initOverlaysContainer(block);
 });
@@ -342,6 +351,7 @@ $('#blocks').on('o:block-added', '.block[data-block-layout^="mappingMap"]', func
 // Handle setting the map for existing blocks.
 $('.block[data-block-layout^="mappingMap"]').each(function() {
     const block = $(this);
+    setTimelineRowProperty(block);
     setMap(block);
     initOverlaysContainer(block);
 });

@@ -3,6 +3,7 @@ namespace MappingExtensions\Form\Fieldset;
 
 use Laminas\Form\Fieldset;
 use NumericDataTypes\Form\Element\NumericPropertySelect;
+use Omeka\Form\Element\PropertySelect;
 use Omeka\Stdlib\HtmlPurifier;
 
 class TimelineFieldset extends Fieldset
@@ -113,7 +114,23 @@ class TimelineFieldset extends Fieldset
                     '' => 'None (automatic rows)', // @translate
                     'resource_template' => 'Resource template', // @translate
                     'resource_class' => 'Resource class', // @translate
+                    'property' => 'Property values', // @translate
                 ],
+            ],
+            'attributes' => ['class' => 'mapping-timeline-row-group-by'],
+        ]);
+        $this->add([
+            'type' => PropertySelect::class,
+            'name' => 'o:block[__blockIndex__][o:data][timeline][row_group_property]',
+            'options' => [
+                'label' => 'Timeline row property', // @translate
+                'info' => 'Choose a property such as schema:category. Each value gets a labelled row; items with multiple values appear in each row. Items without a value appear under No value.', // @translate
+                'empty_option' => '',
+                'term_as_value' => true,
+            ],
+            'attributes' => [
+                'class' => 'chosen-select mapping-timeline-row-property',
+                'data-placeholder' => 'Select property…', // @translate
             ],
         ]);
         $this->add([
@@ -164,6 +181,7 @@ class TimelineFieldset extends Fieldset
                 'background_color' => '',
                 'marker_rows' => '4',
                 'row_group_by' => '',
+                'row_group_property' => '',
                 'data_type_properties' => null,
             ],
         ];
@@ -199,6 +217,15 @@ class TimelineFieldset extends Fieldset
         }
         if (in_array($rawData['timeline']['row_group_by'] ?? '', ['resource_template', 'resource_class'], true)) {
             $data['timeline']['row_group_by'] = $rawData['timeline']['row_group_by'];
+        }
+        $groupProperty = $rawData['timeline']['row_group_property'] ?? '';
+        if (is_string($groupProperty)
+            && preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*:[a-zA-Z0-9_.-]+$/D', trim($groupProperty))
+        ) {
+            $data['timeline']['row_group_property'] = trim($groupProperty);
+            if (($rawData['timeline']['row_group_by'] ?? '') === 'property') {
+                $data['timeline']['row_group_by'] = 'property';
+            }
         }
         if (isset($rawData['timeline']['marker_rows'])
             && in_array((string) $rawData['timeline']['marker_rows'], ['4', '6', '8', '10'], true)

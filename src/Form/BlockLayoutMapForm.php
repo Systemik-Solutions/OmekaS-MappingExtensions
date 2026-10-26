@@ -92,6 +92,7 @@ class BlockLayoutMapForm extends Form
                 'o:block[__blockIndex__][o:data][timeline][timenav_position]' => $data['timeline']['timenav_position'],
                 'o:block[__blockIndex__][o:data][timeline][marker_rows]' => $data['timeline']['marker_rows'],
                 'o:block[__blockIndex__][o:data][timeline][row_group_by]' => $data['timeline']['row_group_by'],
+                'o:block[__blockIndex__][o:data][timeline][row_group_property]' => $data['timeline']['row_group_property'],
                 'o:block[__blockIndex__][o:data][timeline][data_type_properties]' => $data['timeline']['data_type_properties'][0] ?? '',
             ],
             'group_by_control' => [

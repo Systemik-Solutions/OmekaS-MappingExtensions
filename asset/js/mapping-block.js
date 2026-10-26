@@ -428,7 +428,8 @@ function MappingBlock(mapDiv, timelineDiv) {
             if (!filters || !featuresLoaded || !timelineReady) return;
             const events = allTimelineEvents.filter(function(event) {
                 const resourceFeatures = featuresByResource[timelineEventResourceId(event)];
-                return resourceFeatures && resourceFeatures.getLayers().some(matchesFilters);
+                return resourceFeatures && resourceFeatures.getLayers().some(matchesFilters)
+                    && filters.matchesTimelineEvent(event);
             });
             const eventIds = new Set(events.map(event => event.unique_id));
             if (currentTimelineEvent && !eventIds.has(currentTimelineEvent.unique_id)) {

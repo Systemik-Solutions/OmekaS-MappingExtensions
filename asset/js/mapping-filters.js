@@ -92,6 +92,15 @@ class MappingFilters {
         });
     }
 
+    matchesTimelineEvent(event) {
+        if (!event.mapping_group_property) return true;
+        // A multi-valued item may still match the map filter while this
+        // particular category row does not belong to the selected values.
+        const key = 'property:' + event.mapping_group_property;
+        return this.filters.every(state => state.key !== key || !state.selected.size
+            || state.selected.has(event.mapping_group_value));
+    }
+
     register(layer) {
         this.filters.forEach(state => {
             this.values(layer, state).forEach(option => {
